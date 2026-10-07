@@ -175,6 +175,20 @@ KK</textarea></div>
   if (['holdem', 'omaha', 'omaha8'].includes(params.get('game'))) $('game').value = params.get('game');
   for (const id of ['ranges', 'board', 'dead']) if (params.has(id)) $(id).value = params.get(id);
   let calculator;
+  // Hold'em and Omaha ranges are not interchangeable: keep a separate text per game family.
+  const EXAMPLES = { holdem: 'AsKs\nQQ+,AKs', omaha: 'AA$ds\nrandom' };
+  const family = game => game === 'holdem' ? 'holdem' : 'omaha';
+  const savedRanges = {};
+  let shownFamily = family($('game').value);
+  $('game').addEventListener('change', () => {
+    const next = family($('game').value);
+    if (next === shownFamily) return;
+    savedRanges[shownFamily] = $('ranges').value;
+    $('ranges').value = savedRanges[next] ?? EXAMPLES[next];
+    shownFamily = next;
+    calculator?.dispose(); $('result').replaceChildren(); setTag(''); $('status').textContent = '';
+    $('progress-panel').hidden = true;
+  });
   function setTag(text, live) { const t = $('tag'); t.hidden = !text; t.textContent = text || ''; t.classList.toggle('live', !!live); }
   function render(r, live = false) {
       const table = document.createElement('table'); $('result').replaceChildren();
@@ -209,7 +223,11 @@ KK</textarea></div>
           else $('progress-label').textContent = 'Enumerating exact outcomes…';
         } });
       render(r); $('calc-progress').value = 100; $('progress-label').textContent = 'Complete';
-    } catch (error) { setTag(''); $('status').textContent = error.message; $('status').parentElement.classList.toggle('error', error.message !== 'Calculation cancelled'); }
+    } catch (error) {
+      setTag(''); $('status').textContent = error.message; $('progress-panel').hidden = true;
+      $('status').parentElement.classList.toggle('error', error.message !== 'Calculation cancelled');
+      $('status').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
     finally { $('run').disabled = false; $('cancel').disabled = true; }
   };
   $('cancel').onclick = () => calculator?.dispose();

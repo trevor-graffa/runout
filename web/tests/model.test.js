@@ -116,11 +116,11 @@ test('topPercent is monotonic and near target', () => {
   assert.equal(m.rangeCombos(m.topPercent(10, order)), m.topPercent(10, order).size);
 });
 
-test('groupPreset', () => {
-  const [a, b] = m.groupPreset('any');
-  assert.equal(a.size, 169);
-  assert.equal(b.size, 169);
-  assert.throws(() => m.groupPreset('nope'));
+test('classPreset', () => {
+  assert.equal(m.classPreset('all').size, 169);
+  assert.equal(m.classPreset('pairs').size, 13);
+  assert.equal(m.classPreset('broadway').size, 25);
+  assert.throws(() => m.classPreset('nope'));
 });
 
 test('textures partition all Omaha hands', () => {
@@ -153,8 +153,9 @@ test('connection filters parse', () => {
     const size = omahaSize(m.omahaExpression({ family: 'bigpairs', connection: c.key, textures: ['double'] }));
     assert.ok(size > 0, c.key);
   }
-  const ace = omahaSize(m.omahaExpression({ family: 'any', connection: 'ace' }));
-  assert.ok(ace > 0 && ace < 270725);
+  // "Ace suited" ($as) is just "contains an ace" + "top card suited", so the UI omits it.
+  const masks = text => new Set(parseRange(text, { game: 'omaha' }).entries.map(([mask]) => mask));
+  assert.deepEqual(masks('$as'), masks(m.omahaExpression({ family: 'any', connection: 'high', required: [{ rank: 'A', suit: '*' }] })));
 });
 
 test('required cards', () => {
@@ -184,10 +185,15 @@ test('rundowns', () => {
 test('grid expressions', () => {
   const groups = [new Set(['AA', 'KK']), new Set(['AKs', '72o'])];
   const expr = m.omahaExpression({ builder: 'grids', groups, textures: ['double'] });
-  assert.equal(expr, '{AA,KK|AKs,72o}:xxyy');
-  assert.ok(omahaSize(expr) > 0);
-  assert.throws(() => m.omahaExpression({ builder: 'grids', groups: [new Set(), new Set(['AA'])] }));
-  assert.ok(omahaSize(m.omahaExpression({ builder: 'grids', groups: m.groupPreset('highlow') })) > 0);
+  assert.equal(expr, '{top:KK+|bottom:AKs,72o}:xxyy');
+  assert.ok(omahaSize(expr) > 0, 'e.g. Kh Ks over 7h 2s');
+  // Empty grids are unrestricted.
+  assert.equal(m.omahaExpression({ builder: 'grids', groups: [new Set(), new Set(['AA'])] }), '{top:random|bottom:AA}');
+  assert.equal(m.omahaExpression({ builder: 'grids', groups: [new Set(), new Set()] }), 'random');
+  const all = [m.classPreset('all'), m.classPreset('all')];
+  assert.equal(omahaSize(m.omahaExpression({ builder: 'grids', groups: all })), 270725);
+  assert.equal(omahaSize(m.omahaExpression({ builder: 'grids', gridLayout: 'outermiddle', groups: all })), 270725);
+  assert.equal(m.omahaExpression({ builder: 'grids', gridLayout: 'outermiddle', groups: [new Set(['A2s']), m.classPreset('all')] }), '{outer:A2s|middle:random}');
 });
 
 test('custom slots and summaries', () => {
@@ -196,7 +202,8 @@ test('custom slots and summaries', () => {
   assert.equal(m.omahaSummary({ family: 'aces', textures: ['double'] }), 'Aces · double suited');
   assert.equal(m.omahaSummary({ family: 'rundown', rundown: { highMin: '5', highMax: 'A' }, textures: ['double', 'single'] }),
     'Rundowns 5–A · 2+2 or 2+1+1');
-  assert.equal(m.omahaSummary({ builder: 'grids' }), 'Two-card grids');
+  assert.equal(m.omahaSummary({ builder: 'grids' }), 'Top + bottom grids');
+  assert.equal(m.omahaSummary({ builder: 'grids', gridLayout: 'outermiddle' }), 'Outer + middle grids');
   assert.equal(m.omahaSummary({ family: 'any' }), 'Any hand');
 });
 
@@ -224,9 +231,47 @@ test('ported visual-model coverage', () => {
   assert.equal(m.rundownExpression({ highMin: 'J', highMax: 'Q' }), '(QJT9,JT98)');
   assert.equal(m.rundownExpression({ highMin: 'A', highMax: 'A', gaps: [[2, 2], [1, 1], [1, 1]] }), '(AQJT)');
   assert.throws(() => m.rundownExpression({ highMin: '2', highMax: '2' }), /No four distinct ranks/);
-  // "High only" restricts one pair; the other stays unrestricted.
-  const groups = m.groupPreset('highonly');
-  assert.equal(groups[0].size, 25);
-  assert.equal(groups[1].size, 169);
+  // Top two Broadway, bottom two unrestricted = the two highest cards are both T+.
+  const groups = [m.classPreset('broadway'), m.classPreset('all')];
   assert.equal(count({ builder: 'grids', groups }), 190 * 496 + 1140 * 32 + 4845);
+});
+
+// Independent oracle for positional grids: sort the four cards by rank, try every
+// ordering of tied ranks (suits never break ties), and accept if any split fits.
+test('positional grids match a brute-force oracle', () => {
+  const RANKS = '23456789TJQKA', SUITS = 'cdhs';
+  const cls = (a, b) => {
+    const [x, y] = a >> 2 >= b >> 2 ? [a, b] : [b, a];
+    const r = RANKS[x >> 2] + RANKS[y >> 2];
+    return x >> 2 === y >> 2 ? r : r + ((x & 3) === (y & 3) ? 's' : 'o');
+  };
+  const orderings = cards => {
+    const sorted = [...cards].sort((a, b) => (b >> 2) - (a >> 2)), out = [];
+    const permute = (rest, acc) => {
+      if (!rest.length) { out.push(acc); return; }
+      const top = rest[0] >> 2;
+      rest.forEach((c, i) => { if (c >> 2 === top) permute(rest.filter((_, j) => j !== i), [...acc, c]); });
+    };
+    permute(sorted, []);
+    return out;
+  };
+  let seed = 7;
+  const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const randomGrid = p => new Set(m.HAND_CLASSES.filter(() => rand() < p).map(h => h.text));
+  for (const layout of ['topbottom', 'outermiddle']) {
+    for (const [pa, pb] of [[0.15, 0.5], [0.4, 0.2], [0.05, 1]]) {
+      const groups = [randomGrid(pa), randomGrid(pb)];
+      if (!groups[0].size || !groups[1].size) continue;
+      const expected = new Set();
+      for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) for (let c = b + 1; c < 52; c++) for (let d = c + 1; d < 52; d++) {
+        const ok = orderings([a, b, c, d]).some(([w, x, y, z]) => layout === 'topbottom'
+          ? groups[0].has(cls(w, x)) && groups[1].has(cls(y, z))
+          : groups[0].has(cls(w, z)) && groups[1].has(cls(x, y)));
+        if (ok) expected.add(Number((1n << BigInt(a)) | (1n << BigInt(b)) | (1n << BigInt(c)) | (1n << BigInt(d))));
+      }
+      const got = new Set(parseRange(m.omahaExpression({ builder: 'grids', gridLayout: layout, groups }), { game: 'omaha' }).entries.map(([mask]) => mask));
+      assert.equal(got.size, expected.size, `${layout} ${pa}/${pb}`);
+      for (const mask of expected) assert.ok(got.has(mask));
+    }
+  }
 });

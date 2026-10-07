@@ -20,7 +20,10 @@ function configure({ ranges, game = "holdem", board = "", dead = "" }) {
   const values = Array.isArray(ranges) ? ranges : Object.values(ranges);
   if (values.length < 2 || values.length > 10) throw new Error("Use 2 to 10 players");
   const context = boardContext(board, dead), blocked = [...context.board, ...context.dead];
-  const parsed = values.map(r => typeof r === "string" ? parseRange(r, { game, blocked }) : new Range(r.entries, r.handSize).without(blocked));
+  const parsed = values.map((r, i) => {
+    try { return typeof r === "string" ? parseRange(r, { game, blocked }) : new Range(r.entries, r.handSize).without(blocked); }
+    catch (error) { throw new Error(`${labels[i]}: ${error.message}`); }
+  });
   if (parsed.some(r => r.handSize !== (game === "holdem" ? 2 : 4) || !r.size)) throw new Error("Empty range or wrong hand size");
   state?.numeric.free();
   state = { ...context, game, labels, sizes: parsed.map(r => r.size),

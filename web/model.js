@@ -179,15 +179,27 @@ export function holdemExpression(range) {
 // ---------------------------------------------------------------------------
 // Omaha
 // ---------------------------------------------------------------------------
-export function groupPreset(name) {
-  const high = r => r >= 8, low = r => r <= 6 || r === 12, middle = r => r >= 4 && r <= 8;
-  const choices = {
-    highonly: [high, () => true], highlow: [high, low],
-    middlemiddle: [middle, middle], any: [() => true, () => true],
-  };
-  if (!(name in choices)) throw new Error('Unknown two-card group preset');
-  return choices[name].map(accept => new Set(
-    HAND_CLASSES.filter(h => accept(h.high) && accept(h.low)).map(h => h.text)));
+// Two Hold'em-style grids, each describing a pair of positions in the hand
+// after sorting its four cards by rank (suits never break ties).
+export const GRID_LAYOUTS = {
+  topbottom: {
+    label: 'Top + bottom', tags: ['top', 'bottom'], names: ['Top two', 'Bottom two'],
+    detail: 'Sort the four cards by rank. The first grid is the two highest cards, the second grid the two lowest. AK + 72 means A K 7 2.',
+  },
+  outermiddle: {
+    label: 'Outer + middle', tags: ['outer', 'middle'], names: ['High & low', 'Middle two'],
+    detail: 'Sort the four cards by rank. The first grid is the highest and lowest card, the second grid the two in the middle. A2 + KQ means A K Q 2.',
+  },
+};
+
+const CLASS_PRESETS = {
+  all: () => true, clear: () => false, pairs: h => h.pair, suited: h => h.suited,
+  broadway: h => h.low >= 8,
+};
+/** Hand classes (grid cells) for a quick preset. */
+export function classPreset(name) {
+  if (!(name in CLASS_PRESETS)) throw new Error('Unknown grid preset');
+  return new Set(HAND_CLASSES.filter(CLASS_PRESETS[name]).map(h => h.text));
 }
 
 export const OMAHA_FAMILIES = {
@@ -247,7 +259,6 @@ export const TEXTURES = [
 
 export const CONNECTIONS = [
   { key: 'any', label: 'Any', detail: 'No extra suit connection is required.' },
-  { key: 'ace', label: 'Ace suited', filter: '$as', detail: 'An ace shares its suit with another card in the hand.' },
   { key: 'high', label: 'Top card suited', filter: '$hs', detail: 'A highest-ranked card shares its suit with another card.' },
   { key: 'both', label: 'Top two suited', filter: '$bs', detail: 'The two highest-ranked cards each pair up with another card in two different suits.' },
 ];
@@ -261,12 +272,15 @@ function familyBase({ family = 'aces', slots = ['A', 'A', '*', '*'], rundown }) 
   return slots.every(r => r === '*') ? 'random' : slots.join('');
 }
 
-function gridBase(groups) {
-  if (!groups || groups.length !== 2 || groups.some(g => !g.size)) {
-    throw new Error('Select hands in both two-card groups');
-  }
-  const side = g => HAND_CLASSES.filter(h => g.has(h.text)).map(h => h.text).join(',');
-  return `{${groups.map(side).join('|')}}`;
+// An empty grid (or a full one) leaves that pair of positions unrestricted.
+function gridBase(groups, layout = 'topbottom') {
+  const info = GRID_LAYOUTS[layout];
+  if (!info) throw new Error('Unknown grid layout');
+  if (!groups || groups.length !== 2) throw new Error('Expected two grids');
+  const any = g => !g.size || g.size === HAND_CLASSES.length;
+  if (groups.every(any)) return 'random';
+  const side = g => any(g) ? 'random' : holdemShorthand(fromClasses(g)).replaceAll(' ', '');
+  return `{${groups.map((g, i) => `${info.tags[i]}:${side(g)}`).join('|')}}`;
 }
 
 function textureFilter(keys = []) {
@@ -298,7 +312,7 @@ function requiredFilter(required = []) {
 export function omahaExpression(omaha = {}) {
   const { builder = 'family', textures, connection, required } = omaha;
   if (builder !== 'family' && builder !== 'grids') throw new Error('Unknown Omaha builder');
-  const base = builder === 'grids' ? gridBase(omaha.groups) : familyBase(omaha);
+  const base = builder === 'grids' ? gridBase(omaha.groups, omaha.gridLayout) : familyBase(omaha);
   const parts = [
     base === 'random' ? null : base,
     textureFilter(textures),
@@ -311,7 +325,7 @@ export function omahaExpression(omaha = {}) {
 export function omahaSummary(omaha = {}) {
   const { builder = 'family', family = 'aces', textures = [], connection = 'any', required = [] } = omaha;
   const parts = [];
-  if (builder === 'grids') parts.push('Two-card grids');
+  if (builder === 'grids') parts.push(`${(GRID_LAYOUTS[omaha.gridLayout] ?? GRID_LAYOUTS.topbottom).label} grids`);
   else if (family === 'rundown') {
     const { highMin = '5', highMax = 'A' } = omaha.rundown ?? {};
     parts.push(`Rundowns ${highMin}–${highMax}`);

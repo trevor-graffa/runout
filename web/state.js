@@ -1,5 +1,5 @@
 // App state, defaults and local persistence.
-import { fromClasses, groupPreset, topPercent, playerExpression } from './model.js';
+import { fromClasses, topPercent, playerExpression } from './model.js';
 import { HOLDEM_ORDER } from './holdem-order.js';
 
 const STORAGE_KEY = 'pocket-equity:v1';
@@ -14,7 +14,7 @@ export function defaultOmaha(hero) {
   return {
     builder: 'family', family: hero ? 'aces' : 'any', slots: ['A', 'A', '*', '*'],
     rundown: { highMin: '9', highMax: 'A', gaps: [[1, 1], [1, 1], [1, 1]] },
-    groups: groupPreset('highlow'), activeGroup: 0,
+    gridLayout: 'topbottom', groups: [new Set(), new Set()], activeGroup: 0,
     textures: hero ? ['double'] : [], connection: 'any',
     required: [0, 1, 2, 3].map(() => ({ rank: '*', suit: '*' })),
   };
@@ -85,11 +85,20 @@ export function load() {
           ...fresh, ...p,
           mode: { ...fresh.mode, ...p.mode }, cards: { ...fresh.cards, ...p.cards },
           holdem: new Set(p.holdem ?? fresh.holdem),
-          omaha: { ...fresh.omaha, ...p.omaha, groups: (p.omaha?.groups ?? []).length === 2 ? p.omaha.groups.map(g => new Set(g)) : fresh.omaha.groups },
+          omaha: migrateOmaha({ ...fresh.omaha, ...p.omaha, groups: (p.omaha?.groups ?? []).length === 2 ? p.omaha.groups.map(g => new Set(g)) : fresh.omaha.groups }),
         };
       }),
     };
   } catch {
     return defaultState();
   }
+}
+
+/** Saved "Ace suited" equals "Top card suited" with a required ace. */
+function migrateOmaha(omaha) {
+  if (omaha.connection !== 'ace') return omaha;
+  const required = omaha.required.map(r => ({ ...r }));
+  const free = required.findIndex(r => r.rank === '*' && r.suit === '*');
+  if (!required.some(r => r.rank === 'A') && free >= 0) required[free].rank = 'A';
+  return { ...omaha, connection: 'high', required };
 }

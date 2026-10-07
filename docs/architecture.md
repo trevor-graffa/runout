@@ -135,12 +135,13 @@ higher-ranked card). Exact hand mode uses the card picker; cards already on the
 board, dead, or held are disabled. Deal random fills a random hand.
 
 The Omaha editor offers hand families (Any, Aces, Big pairs, Broadway, Rundowns,
-Ace–deuce, Low starters, Pick ranks) or two-card grids (first and second pair
-grids, with presets High + low, Middle + middle, and High only). Rundowns take a
+Ace–deuce, Low starters, Pick ranks) or positional pair grids
+(Top + bottom: the two highest and two lowest cards; Outer + middle: highest and
+lowest vs the middle two; an empty grid is unrestricted). Rundowns take a
 highest-card interval and a min/max distance for each neighbour gap; distance 1
 means consecutive ranks. Impossible constraints show an error rather than widening
 the range. Suit texture is a multi-select (2+2, 2+1+1, rainbow, 3+1, 4), and suited
-cards can be Any, Ace suited, Top card suited, or Top two suited. Must include takes
+cards can be Any, Top card suited, or Top two suited (an ace suited is Top card suited plus a required ace; `$as` remains in the text syntax). Must include takes
 four slots, each a distinct card with an optional rank and suit. The editor shows a
 live count and three random example hands.
 

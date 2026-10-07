@@ -1,7 +1,7 @@
 // Range / exact-hand editor. Works on a draft copy: Cancel discards, Done commits.
 import {
   RANKS, SUITS, SUIT_NAMES, HAND_CLASSES, CLASS_BY_TEXT, classCombos, suitPatterns, classState, addClasses, removeClasses,
-  withPattern, holdemPreset, topPercent, holdemShorthand, rangePercent, groupPreset,
+  withPattern, holdemPreset, topPercent, holdemShorthand, rangePercent, classPreset, GRID_LAYOUTS,
   OMAHA_FAMILIES, TEXTURES, CONNECTIONS, rundownHands, omahaSummary,
 } from './model.js';
 import { HOLDEM_ORDER } from './holdem-order.js';
@@ -76,15 +76,6 @@ function setSummary(summary, { label, combos, percent, error }) {
 function buildHoldem(body) {
   const p = ctx.player, summary = summaryCard();
   summary.examples.remove();
-  const slider = h('input', { type: 'range', min: '0', max: '100', step: '0.5', value: '0', id: 'top-percent', 'aria-label': 'Select the strongest percent of hands' });
-  const output = h('output', { for: 'top-percent' });
-  // The slider selects (stages) the strongest hands; Add or Remove applies them like a drag.
-  slider.oninput = () => {
-    const combos = topPercent(Number(slider.value), HOLDEM_ORDER);
-    matrix.staged.clear();
-    for (const text of HOLDEM_ORDER) if (combos.has(classCombos(text)[0])) matrix.staged.add(text);
-    matrix.refresh(); renderStage();
-  };
   const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Quick ranges' },
     ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['all', 'Any two'], ['clear', 'Clear']].map(([key, label]) =>
       h('button.chip', { dataset: { preset: key }, onclick: () => { p.holdem = holdemPreset(key); refresh(); } }, label)));
@@ -94,6 +85,7 @@ function buildHoldem(body) {
     fill: text => { const { count, total } = classState(p.holdem, text); return count / total; },
     onStage: () => renderStage(),
   });
+  const slider = strengthSlider(matrix, () => renderStage());
   const stage = h('div.stage-bar');
   let suitsOpen = null; // null = automatic: open for small selections
 
@@ -102,8 +94,7 @@ function buildHoldem(body) {
     if (!staged.length) suitsOpen = null;
     const showSuits = suitsOpen ?? staged.length <= 3;
     const stagedCombos = staged.reduce((n, c) => n + c.combos, 0);
-    if (!staged.length) slider.value = '0';
-    output.textContent = `${(stagedCombos / 13.26).toFixed(1)}%`;
+    slider.sync();
     if (!staged.length) {
       stage.className = 'stage-bar empty';
       stage.replaceChildren('Tap or drag across hands, then Add or Remove.');
@@ -155,9 +146,27 @@ function buildHoldem(body) {
   }
 
   body.replaceChildren(summary.card,
-    h('div.slider-row', {}, h('label', { for: 'top-percent', text: 'Top' }), slider, output),
+    slider.row,
     presets, matrix.element, stage);
   refresh();
+}
+
+/** "Top X%" slider that stages the strongest hand classes, like a drag; Add/Remove applies them. */
+function strengthSlider(matrix, onChange) {
+  const slider = h('input', { type: 'range', min: '0', max: '100', step: '0.5', value: '0', id: 'top-percent', 'aria-label': 'Select the strongest percent of hands' });
+  const output = h('output', { for: 'top-percent' });
+  slider.oninput = () => {
+    const combos = topPercent(Number(slider.value), HOLDEM_ORDER);
+    matrix.staged.clear();
+    for (const text of HOLDEM_ORDER) if (combos.has(classCombos(text)[0])) matrix.staged.add(text);
+    matrix.refresh(); onChange();
+  };
+  const sync = () => {
+    const combos = [...matrix.staged].reduce((n, text) => n + CLASS_BY_TEXT.get(text).combos, 0);
+    if (!combos) slider.value = '0';
+    output.textContent = `${(combos / 13.26).toFixed(1)}%`;
+  };
+  return { row: h('div.slider-row', {}, h('label', { for: 'top-percent', text: 'Top' }), slider, output), sync };
 }
 
 function comboFor(text, [s1, s2]) {
@@ -226,38 +235,48 @@ function buildOmaha(body) {
   }
 
   function gridControls() {
+    const layout = GRID_LAYOUTS[o.gridLayout] ?? GRID_LAYOUTS.topbottom;
+    const layoutPicker = h('div.segmented', { role: 'radiogroup', 'aria-label': 'Which cards each grid describes' },
+      ...Object.entries(GRID_LAYOUTS).map(([key, l]) => h('button', { role: 'radio', dataset: { value: key } }, l.label)));
+    segmented(layoutPicker, v => { o.gridLayout = v; update(); })(o.gridLayout ?? 'topbottom');
     const active = o.activeGroup ?? 0;
-    const tabs = h('div.segmented', { role: 'radiogroup', 'aria-label': 'Which pair of cards' },
-      ...o.groups.map((g, i) => h('button', { role: 'radio', dataset: { value: String(i) } },
-        `${i ? 'Second' : 'First'} two · ${g.size === 169 ? 'any' : g.size}`)));
+    const tabs = h('div.segmented', { role: 'radiogroup', 'aria-label': 'Grid' },
+      ...o.groups.map((g, i) => h('button', { role: 'radio', dataset: { value: String(i), grid: String(i) } },
+        `${layout.names[i]} · ${!g.size || g.size === HAND_CLASSES.length ? 'any' : g.size}`)));
     segmented(tabs, v => { o.activeGroup = Number(v); update(); })(String(active));
-    const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Grid presets' },
-      ...[['highlow', 'High + low'], ['middlemiddle', 'Middle + middle'], ['highonly', 'High only'], ['any', 'Clear to any']].map(([key, label]) =>
-        h('button.chip', { dataset: { pairPreset: key }, onclick: () => { o.groups = groupPreset(key); update(); } }, label)));
     const group = o.groups[active];
     const matrix = createMatrix({
-      label: `${active ? 'Second' : 'First'} two cards`,
+      label: layout.names[active],
       fill: text => group.has(text) ? 1 : 0,
       onStage: () => renderStage(),
     });
+    const slider = strengthSlider(matrix, () => renderStage());
+    const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Grid presets' },
+      ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['clear', 'Clear (any)']].map(([key, label]) =>
+        h('button.chip', { dataset: { gridPreset: key }, onclick: () => { o.groups[active] = classPreset(key); update(); } }, label)));
     const stage = h('div.stage-bar');
     function renderStage() {
+      slider.sync();
       const n = matrix.staged.size;
-      if (!n) { stage.className = 'stage-bar empty'; stage.replaceChildren('Tap or drag across hands, then Add or Remove.'); return; }
+      if (!n) {
+        stage.className = 'stage-bar empty';
+        stage.replaceChildren(group.size ? 'Tap or drag across hands, then Add or Remove.' : 'Empty grid = any two cards. Select hands and Add to narrow it.');
+        return;
+      }
       stage.className = 'stage-bar';
-      stage.replaceChildren(h('div.stage-info', {}, h('strong', { text: `${n} selected` }), h('small', { text: [...matrix.staged].slice(0, 8).join(', ') })),
+      stage.replaceChildren(h('div.stage-info', {}, h('strong', { text: `${n} hand${n === 1 ? '' : 's'}` }), h('small', { text: [...matrix.staged].slice(0, 6).join(', ') })),
         h('div.stage-actions', {},
           h('button.dismiss', { 'aria-label': 'Clear selection', onclick: () => matrix.clearStage() }, '✕'),
-          h('button.remove', { onclick: () => apply(false) }, 'Remove'),
-          h('button.add', { onclick: () => apply(true) }, 'Add')));
+          h('button.remove', { id: 'remove-selection', onclick: () => apply(false) }, 'Remove'),
+          h('button.add', { id: 'add-selection', onclick: () => apply(true) }, 'Add')));
     }
     function apply(add) {
       for (const text of matrix.staged) add ? group.add(text) : group.delete(text);
       matrix.staged.clear(); update();
     }
     renderStage();
-    return [tabs, presets, matrix.element, stage,
-      h('p.section-note', { text: 'The first grid picks two of the four cards and the second grid picks the other two. All four must be different cards; a hand that fits several ways counts once. Suits come from the filters below.' })];
+    return [layoutPicker, h('p.section-note', { text: layout.detail }), tabs, slider.row, presets, matrix.element, stage,
+      h('p.section-note', { text: 'Suits have no rank: with two kings either one can be the higher card, and a hand counts if any such split fits. Grid suited/offsuit (AKs) is about those two cards; the filters below look at all four.' })];
   }
 
   // Suits

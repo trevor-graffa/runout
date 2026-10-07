@@ -351,9 +351,24 @@ async function suite(name,type,launch){
     assert.ok(await combos()>0);
     // Two-card grids builder.
     await page.locator('#editor-body button[data-value="grids"]').tap();
-    await page.locator('[data-pair-preset="highlow"]').tap();
+    await page.locator('[data-grid-preset="pairs"]').tap();
+    const pairsOnTop=await combos();
+    assert.ok(pairsOnTop>0);
+    assert.ok((await text('#editor-body .summary-text')).includes('Top + bottom grids'));
+    // Staging works in the bottom grid too.
+    await page.locator('#editor-body button[data-grid="1"]').tap();
+    // An empty grid means any two cards; adding hands narrows it.
+    assert.ok((await text('#editor-body button[data-grid="1"]')).includes('any'));
+    await page.locator('#editor-body .matrix [data-hand="72o"]').tap();
+    await page.locator('#add-selection').tap();
+    assert.ok(await combos()<pairsOnTop,'restricting the bottom two to 72o shrinks the range');
+    await page.locator('#editor-body button[data-value="outermiddle"]').tap();
+    // A pair as both the highest and lowest card means four of a kind: never double suited.
+    await page.waitForFunction(()=>/No hands match/.test(document.querySelector('#editor-body .summary-text').textContent));
+    await page.locator('#editor-body button[data-grid="0"]').tap();
+    await page.locator('[data-grid-preset="clear"]').tap();
+    assert.ok((await text('#editor-body .summary-text')).includes('Outer + middle grids'));
     assert.ok(await combos()>0);
-    assert.ok((await text('#editor-body .summary-text')).includes('grids'));
     // Custom slots: AKQJ double suited = 36.
     await page.locator('#editor-body button[data-value="family"]').tap();
     await page.locator('[data-family="custom"]').tap();
@@ -424,9 +439,24 @@ async function suite(name,type,launch){
     assert.equal(await page.locator('#board-cards .card:not(.empty)').count(),0);
   });
 
+  await step('advanced mode keeps ranges per game',async()=>{
+    await page.goto(origin+'/advanced.html');
+    await page.locator('#ranges').fill('AA\nKK');
+    await page.locator('#game').selectOption('omaha');
+    const omaha=await page.locator('#ranges').inputValue();
+    assert.ok(!omaha.includes('KK') && omaha.includes('$ds'),`Omaha example expected, got ${omaha}`);
+    await page.locator('#run').tap();
+    await page.waitForFunction(()=>!document.getElementById('run').disabled&&document.querySelectorAll('#result tbody tr').length===2,null,{timeout:30000});
+    await page.locator('#ranges').fill('QQ+\nrandom');
+    await page.locator('#run').tap();
+    await page.waitForFunction(()=>/Player 1: .*Hold’em only/.test(document.getElementById('status').textContent));
+    await page.locator('#game').selectOption('holdem');
+    assert.equal(await page.locator('#ranges').inputValue(),'AA\nKK','Hold’em ranges restored');
+  });
+
   assert.deepEqual(errors,[],`page errors: ${errors}`);
   await browser.close();
-  console.log(`${name}: layout, calculation, exact, editor, matrix, suit chips, keyboard, board, Omaha, Hi-Lo, rows and persistence passed.`);
+  console.log(`${name}: layout, calculation, exact, editor, matrix, suit chips, keyboard, board, Omaha, Hi-Lo, rows, persistence and advanced mode passed.`);
 }
 
 try{

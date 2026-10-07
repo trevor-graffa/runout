@@ -67,22 +67,31 @@ PPT behavior across versions and its complete grammar are not guaranteed.
 ## Additional Omaha builder syntax
 
 These are extensions provided by this library, not claims about historical PPT
-syntax. `{AA,AKs|A2,23}` selects two distinct cards from each Hold'em-style
-range to form one four-card Omaha hand. Physical hands are deduplicated even
-when several partitions match. Each side uses ordinary Hold'em syntax; nested
-braces and weights inside braces are rejected. A weight outside the braces is
-allowed. Suit filters apply to the complete four-card hand.
+syntax. Braces combine two Hold'em-style ranges into one four-card Omaha range:
+
+- `{AA,AKs|A2,23}` takes any two cards from the first range and the other two
+  from the second.
+- `{top:AK,AQ|bottom:76s,65s}` is positional: sort the four cards by rank; the
+  two highest must match the first range and the two lowest the second.
+- `{outer:A2|middle:KQ,QJ}`: the highest and lowest cards match the first range,
+  the two middle cards the second.
+
+Suits never break rank ties: with two kings, either one may be the higher card,
+and a hand matches if any rank-consistent split fits. Suited/offsuit (`AKs`)
+refers to the two cards of that side; suit filters apply to the whole hand.
+`random` leaves a side unrestricted. Physical hands are deduplicated even when
+several splits match. Nested braces and weights inside braces are rejected; a
+weight outside the braces is allowed.
 
 `$ts` selects exactly three cards of one suit (3+1); `$ms` selects four of one
 suit. `$hs` requires a highest-rank card to share a suit with another card;
-`$as` requires an ace to share a suit. `$bs` requires the two highest-rank cards
+`$as` requires an ace to share a suit (equivalent to `A:$hs`, which is why the app
+offers only Top card suited). `$bs` requires the two highest-rank cards
 to be suited separately in distinct suits. Rank ties allow any qualifying
 assignment. For example, `AsKsKh3h` satisfies `$bs` using As and Kh as the top
 two cards. `AsKsQhJh` does not. These filters may be appended or intersected
 with `:` like the original suit macros.
 
-The app's Omaha editor two-card grid presets are also card-membership rules, not
-hand rankings. High only restricts the first pair to ranks T–A and leaves the
-other pair unrestricted. High + low restricts the second pair to A,2–8. Middle +
-middle uses ranks 6–T for both pairs. The editor builds these as ordinary range
-expressions.
+The app's Omaha editor uses the positional forms: Top + bottom builds
+`{top:…|bottom:…}` and Outer + middle builds `{outer:…|middle:…}`. An empty grid
+is unrestricted (`random`).

@@ -103,6 +103,7 @@ function pattern(text, size) {
     } else if (RANKS.includes(text[i])) { ranks = [RANKS.indexOf(text[i++])]; }
     else if (text[i] === "*") { ranks = allRanks; i++; }
     else if ((SUITS + "xyzw").includes(text[i])) { ranks = allRanks; }
+    else if (size === 4 && "+-".includes(text[i])) throw new Error(`"${text}": + and - shorthand is Hold’em only; in Omaha list hands, e.g. (QQ,KK,AA)`);
     else throw new Error(`Unsupported range token ${text[i]}`);
     if (i < text.length && (SUITS + "xyzw").includes(text[i])) suit = text[i++];
     tokens.push({ ranks, suit });
@@ -153,14 +154,39 @@ function suitProperty(mask,name){
   if(name==='$as')return cards.some(c=>Math.floor(c/4)===12&&counts[c%4]>=2);
   return cards.some(a=>Math.floor(a/4)===high&&cards.some(b=>Math.floor(b/4)>=second&&a%4!==b%4&&counts[a%4]>=2&&counts[b%4]>=2));
 }
+// {A|B}: any two cards from A plus the other two from B.
+// {top:A|bottom:B}: A is the two highest-ranked cards, B the two lowest.
+// {outer:A|middle:B}: A is the highest and lowest cards, B the middle two.
+// Suits never break rank ties: a hand matches if any rank-consistent split fits.
+const PAIR_LAYOUTS={'top,bottom':'top','outer,middle':'outer'};
+function pairRanks(mask){
+  const cards=[];for(let c=0;c<52;c++)if(mask&bits[c])cards.push(c>>2);
+  return [cards[1],cards[0]];
+}
 function paired(text){
   return cached(pairCache,text,4,()=>{
     const parts=text.split('|');
     if(parts.length!==2||parts.some(p=>!p)||/[{}@]/.test(text))throw new Error("Use {first Hold'em range|second Hold'em range}; weights go outside");
-    const [a,b]=parts.map(p=>parseRange(p));
+    const tags=parts.map(p=>p.match(/^(top|bottom|outer|middle):/)?.[1]);
+    let layout='any',sides=parts;
+    if(tags.some(Boolean)){
+      const order=['top','outer'].includes(tags[0])?[0,1]:[1,0];
+      layout=PAIR_LAYOUTS[order.map(i=>tags[i]).join(',')];
+      if(!layout)throw new Error('Pair {top:…|bottom:…} or {outer:…|middle:…}');
+      sides=order.map(i=>parts[i].slice(tags[i].length+1));
+    }
+    const [a,b]=sides.map(p=>parseRange(p));
     if(a.size===1326&&b.size===1326)return universe(4);
     const left=a.entries.map(([m])=>BigInt(m)),right=b.entries.map(([m])=>BigInt(m)),set=new Set();
-    for(const x of left)for(const y of right)if(!(x&y))set.add(Number(x|y));
+    const rightRanks=layout==='any'?null:new Map(right.map(y=>[y,pairRanks(y)]));
+    for(const x of left){
+      const [xh,xl]=layout==='any'?[0,0]:pairRanks(x);
+      for(const y of right){
+        if(x&y)continue;
+        if(rightRanks){const [yh,yl]=rightRanks.get(y);if(layout==='top'?xl<yh:xh<yh||xl>yl)continue;}
+        set.add(Number(x|y));
+      }
+    }
     return set;
   });
 }
