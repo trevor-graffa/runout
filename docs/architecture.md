@@ -20,7 +20,7 @@ and parsing happen outside the UI thread. The page only fetches static assets.
 The phone app is `index.html` with `app.css`, `app.js` (main screen, board sheet,
 settings, calculation), `editor.js` (range/hand editor), `matrix.js` (13×13 grid),
 `deck.js` (52-card picker), `ui.js` (DOM helpers and sheets), `state.js` (state,
-defaults, and localStorage key `pocket-equity:v1`), and `model.js`, a pure model that
+defaults, and localStorage key `runout:v1`), and `model.js`, a pure model that
 turns Omaha and Hold'em editor choices into range expressions and checks that they
 round-trip through `ranges.js`. `holdem-order.js` ranks the 169 Hold'em classes for
 the Top % slider; `tools/holdem_order.py` generates it with Monte Carlo sampling

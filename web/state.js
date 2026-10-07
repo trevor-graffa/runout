@@ -2,7 +2,8 @@
 import { fromClasses, topPercent, playerExpression } from './model.js';
 import { HOLDEM_ORDER } from './holdem-order.js';
 
-const STORAGE_KEY = 'pocket-equity:v1';
+const STORAGE_KEY = 'runout:v1';
+const LEGACY_KEYS = ['pocket-equity:v1'];
 export const MAX_PLAYERS = 10;
 export const SEAT_COLORS = ['#2f7bf6', '#e5484d', '#f59e0b', '#8b5cf6', '#14b8a6', '#ec4899', '#65a30d', '#f97316', '#0891b2', '#a16207'];
 
@@ -74,7 +75,8 @@ export function save(state) {
 
 export function load() {
   try {
-    const plain = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = [STORAGE_KEY, ...LEGACY_KEYS].map(key => localStorage.getItem(key)).find(Boolean);
+    const plain = JSON.parse(saved);
     if (!plain?.players?.length) return defaultState();
     const base = defaultState();
     return {

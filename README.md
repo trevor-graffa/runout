@@ -1,7 +1,9 @@
-# Poker engine
+# Runout
 
-A PokerStove-style equity library and command-line calculator for **Hold'em,
-four-card Omaha high, and Omaha eight-or-better**. Python handles all text,
+Runout is a poker equity calculator: a phone app that runs in the browser, plus
+the `poker_engine` Python package behind it, a PokerStove-style equity library and
+command-line calculator for **Hold'em, four-card Omaha high, and Omaha
+eight-or-better**. Python handles all text,
 range expansion, and presentation. A Rust core handles numeric hands, weighted
 sampling, exact enumeration, and evaluation. The same core compiles to WebAssembly
 for a phone-friendly browser calculator, with JavaScript handling browser text

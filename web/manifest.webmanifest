@@ -1,6 +1,6 @@
 {
-  "name": "Pocket Equity",
-  "short_name": "Equity",
+  "name": "Runout",
+  "short_name": "Runout",
   "description": "Poker equity calculator for Hold’em, Omaha and Omaha Hi-Lo.",
   "start_url": "./index.html",
   "scope": "./",
