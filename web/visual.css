@@ -139,3 +139,13 @@ dialog { width: min(440px,calc(100% - 24px)); padding: 22px; border: 1px solid v
   .range-dialog #range-suits { margin-top: 8px; }
   .range-dialog #range-suits p { font-size: 10px; }
 }
+
+
+@media(max-width:600px) {
+  #holdem-presets { flex-wrap: nowrap; margin-bottom: 8px; gap: 3px; }
+  #holdem-presets button { flex: 1; min-width: 0; padding: 3px 2px; font-size: 10px; }
+  .range-dialog .legend { display: none; }
+  .grid-actions { flex-wrap: nowrap; } .grid-actions span { display: none; }
+  .grid-actions button { flex: 1; }
+  .range-dialog .matrix { width: min(100%, calc(100dvh - 390px)); }
+}

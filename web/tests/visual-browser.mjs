@@ -60,6 +60,11 @@ for(const [name,type,launch] of [['chrome',chromium,{channel:'chrome'}],['webkit
     await page.locator('[data-player="0"]').dblclick();
     assert.ok(await page.locator('#range-editor').evaluate(e=>e.open));
     assert.ok((await page.locator('#range-count').textContent()).startsWith('6'));
+    for(const [width,height] of [[320,568],[375,667],[390,844]]){
+      await page.setViewportSize({width,height});
+      const overflow=await page.locator('.range-content').evaluate(e=>({height:e.clientHeight,scroll:e.scrollHeight}));
+      assert.ok(overflow.scroll<=overflow.height+1,`${name}: range editor scrolls at ${width}×${height}: ${JSON.stringify(overflow)}`);
+    }
     await page.screenshot({path:`/tmp/poker-visual-${name}-holdem-editor.png`,fullPage:true});
     await page.locator('#done-range').tap();
     await page.locator('#add-player').tap();assert.equal(await page.locator('.player-select').count(),3);
