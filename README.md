@@ -155,6 +155,15 @@ notebooks and CLI analysis. A backend would only be needed for future account,
 saved-analysis, or sharing features. See [docs/architecture.md](docs/architecture.md)
 for payload, memory, browser limits, and the JavaScript API.
 
+### Deploying to GitHub Pages
+
+`.github/workflows/pages.yml` builds the WASM engine (`web/pkg/` is not committed),
+runs the JavaScript tests, and publishes `web/` on every push to `main`. One-time
+setup: push the repository to GitHub, then choose **Settings → Pages → Source:
+GitHub Actions**. The app uses only relative paths, so it works at a project URL
+such as `https://<user>.github.io/<repo>/`. When upgrading the `wasm-bindgen`
+crate, update the version pinned in the workflow to match `Cargo.lock`.
+
 ## Exact and Monte Carlo behavior
 
 `method='auto'` selects exact if a conservative upper bound fits `max_exact`
