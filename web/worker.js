@@ -51,6 +51,8 @@ async function equity({ method = "auto", samples = 100000, seed, maxExact = 2000
     let batch=10000,result;
     while(!simulation.done){
       const start=performance.now();result=decorate(simulation.step(batch));
+      // Rejection sampling: if nothing has fit after many draws, the ranges are (nearly) incompatible.
+      if(result.outcomes===0n&&result.attempts>=20000000n)throw new Error('These ranges almost never fit together without sharing cards.');
       self.postMessage({id,progress:{...result,target:samples,done:simulation.done}});
       if(!simulation.done){batch=Math.min(250000,Math.max(1000,Math.floor(batch*30/Math.max(.1,performance.now()-start))));await new Promise(resolve=>setTimeout(resolve,0));}
     }

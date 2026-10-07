@@ -1,58 +1,173 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#203f71">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Advanced ranges · Poker equity</title>
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
 <style>
-  * { box-sizing: border-box; }
-  body { font: 16px system-ui; max-width: 760px; margin: 32px auto; padding: 0 max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); background: #f8fafc; color: #172033; }
-  h1 { margin-bottom: 8px; } p { line-height: 1.5; } form { display: grid; gap: 18px; }
-  label { display: grid; gap: 6px; min-width: 0; } input, select, textarea, button { font: inherit; min-height: 48px; padding: 12px; border: 1px solid #bbc6d4; border-radius: 8px; }
-  input, select, textarea { width: 100%; min-width: 0; background: white; color: inherit; }
-  select { appearance: none; -webkit-appearance: none; height: 48px; padding-right: 40px;
-    background-image: linear-gradient(45deg, transparent 50%, #536176 50%), linear-gradient(135deg, #536176 50%, transparent 50%);
-    background-position: calc(100% - 20px) center, calc(100% - 14px) center; background-size: 6px 6px; background-repeat: no-repeat; }
-  :focus-visible { outline: 3px solid #487cca; outline-offset: 3px; }
-  .actions { display: flex; gap: 12px; } .actions button { flex: 1; }
-  textarea { min-height: 76px; } button { background: #203f71; color: white; cursor: pointer; }
-  button:disabled { opacity: .5; } table { width: 100%; border-collapse: collapse; background: white; }
-  th, td { text-align: left; padding: 12px; border-bottom: 1px solid #dbe2eb; } #status { min-height: 24px; }
-  #result { overflow-x: auto; } th { font-size: 14px; } td { font-variant-numeric: tabular-nums; }
-  nav { display: flex; gap: 12px; margin-bottom: 24px; } nav a { display: flex; align-items: center; min-height: 48px; padding: 12px; border-radius: 8px; border: 1px solid #bbc6d4; color: #203f71; text-decoration: none; }
-  nav a[aria-current] { background: #203f71; color: white; }
-  @media (max-width: 520px) {
-    body { margin-top: 20px; } h1 { font-size: 28px; }
-    table, tbody { display: block; } thead { display: none; }
-    tbody { display: grid; gap: 12px; background: #f8fafc; }
-    tr { display: grid; grid-template-columns: 1fr 1fr; padding: 12px; border: 1px solid #dbe2eb; border-radius: 12px; background: white; }
-    td { padding: 8px; border: 0; overflow-wrap: anywhere; }
-    td::before { content: attr(data-label); display: block; font-size: 12px; color: #536176; margin-bottom: 4px; }
-    td:first-child { grid-column: 1 / -1; font-weight: 600; }
-    td:nth-child(2) { font-size: 22px; color: #203f71; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f2f2f7; --surface: #ffffff; --fill: rgba(120,120,128,.12); --fill-strong: rgba(120,120,128,.2);
+    --label: #0b0b0f; --secondary: rgba(60,60,67,.64); --tertiary: rgba(60,60,67,.36); --separator: rgba(60,60,67,.16);
+    --accent: #0b7a57; --accent-soft: rgba(11,122,87,.13); --on-accent: #ffffff;
+    --danger: #e0393e; --warning: #b35c00; --radius: 14px; --gutter: 16px; --ease: cubic-bezier(.32,.72,0,1);
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000; --surface: #1c1c1e; --fill: rgba(120,120,128,.24); --fill-strong: rgba(120,120,128,.36);
+      --label: #f5f5f7; --secondary: rgba(235,235,245,.62); --tertiary: rgba(235,235,245,.32); --separator: rgba(84,84,88,.55);
+      --accent: #2fbf8a; --accent-soft: rgba(47,191,138,.2); --on-accent: #00140c; --danger: #ff6369; --warning: #ffb020;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--label);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 560px; margin: 0 auto; padding: 0 max(var(--gutter), env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left)); }
+  .navbar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 48px;
+    padding-top: env(safe-area-inset-top); margin: 0 calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+    background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .navbar a { color: var(--accent); text-decoration: none; font-size: 17px; display: inline-flex; align-items: center; min-height: 44px; justify-self: start; white-space: nowrap; }
+  .navbar a span { font-size: 28px; line-height: 1; margin-right: 4px; margin-top: -3px; }
+  .navbar h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  .lede { margin: 8px 4px 0; font-size: 13px; color: var(--secondary); }
+  form { display: grid; gap: 4px; }
+  .group-title { margin: 22px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .02em; color: var(--secondary); }
+  .group { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+  .group-foot { margin: 6px 16px 0; font-size: 13px; color: var(--secondary); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 16px; min-width: 0; }
+  .row + .row, .row + details, details + .row { border-top: .5px solid var(--separator); }
+  .row > span { flex: none; }
+  .row input, .row select { flex: 1; min-width: 0; text-align: right; }
+  input, select, textarea, button { font: inherit; font-size: 16px; color: inherit; }
+  input, select, textarea { border: 0; background: transparent; min-height: 44px; padding: 10px 0; width: 100%; min-width: 0; border-radius: 0; }
+  input::placeholder, textarea::placeholder { color: var(--tertiary); }
+  select { appearance: none; -webkit-appearance: none; cursor: pointer; direction: rtl; padding-right: 0; color: var(--accent); font-weight: 500; }
+  select option { direction: ltr; color: var(--label); }
+  .game-select { margin: 0; padding: 2px; background: var(--fill); border-radius: 10px; }
+  .game-select select { direction: ltr; text-align: center; text-align-last: center; background: var(--surface); border-radius: 8px; padding: 0 12px; color: var(--label); font-weight: 600; min-height: 44px; height: 44px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  @media (prefers-color-scheme: dark) { .game-select select { background: #636366; } }
+  textarea#ranges { display: block; padding: 12px 16px; min-height: 120px; resize: vertical; line-height: 1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+  details > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 16px; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: "›"; font-size: 24px; color: var(--tertiary); transition: transform .2s var(--ease); }
+  details[open] > summary::after { transform: rotate(90deg); }
+  details[open] > summary { border-bottom: .5px solid var(--separator); }
+  .actions { display: grid; gap: 10px; margin-top: 22px; }
+  button { border: 0; cursor: pointer; border-radius: var(--radius); }
+  #run { height: 54px; background: var(--accent); color: var(--on-accent); font-size: 17px; font-weight: 600; transition: transform .12s var(--ease); }
+  #run:active { transform: scale(.98); }
+  #cancel { min-height: 48px; background: var(--fill); color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  .run-status { margin-top: 12px; min-height: 18px; font-size: 13px; color: var(--secondary); text-align: center; font-variant-numeric: tabular-nums; }
+  .run-status .tag { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+    text-transform: uppercase; margin-right: 6px; vertical-align: 1px; background: var(--fill); color: var(--secondary); }
+  .run-status .tag.live { background: var(--accent-soft); color: var(--accent); }
+  .run-status.error { color: var(--danger); }
+  #progress-panel { margin-top: 8px; text-align: center; }
+  progress { width: 100%; height: 6px; appearance: none; -webkit-appearance: none; border: 0; border-radius: 3px; background: var(--fill); overflow: hidden; display: block; }
+  progress::-webkit-progress-bar { background: var(--fill); }
+  progress::-webkit-progress-value { background: var(--accent); }
+  progress::-moz-progress-bar { background: var(--accent); }
+  #progress-label { margin: 6px 0 0; font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  #result { margin-top: 12px; }
+  #result:empty { display: none; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+  th, td { text-align: right; padding: 12px 10px; border-bottom: .5px solid var(--separator); font-variant-numeric: tabular-nums; }
+  th { font-size: 12px; font-weight: 600; color: var(--secondary); text-transform: uppercase; letter-spacing: .02em; }
+  th:first-child, td:first-child { text-align: left; padding-left: 16px; font-weight: 600; overflow-wrap: anywhere; }
+  td:nth-child(2) { font-size: 20px; font-weight: 700; color: var(--accent); }
+  tr:last-child td { border-bottom: 0; }
+  .ref { margin-top: 22px; }
+  .ref-body { padding: 12px 16px 16px; font-size: 14px; }
+  .ref-body h3 { margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--secondary); }
+  .ref-body h3:first-child { margin-top: 0; }
+  .ref-body ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .ref-body li { overflow-wrap: anywhere; }
+  .ref-body code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--fill); padding: 1px 5px; border-radius: 5px; }
+  .ref-body p { margin: 8px 0 0; color: var(--secondary); font-size: 13px; }
+  @media (max-width: 520px) {
+    table, tbody { display: block; background: transparent; }
+    thead { display: none; }
+    tbody { display: grid; gap: 10px; }
+    tr { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 10px 6px; border-radius: var(--radius); background: var(--surface); }
+    td { padding: 6px 10px; border: 0; text-align: left !important; overflow-wrap: anywhere; font-size: 15px; }
+    td::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--secondary); margin-bottom: 2px; }
+    td:first-child { grid-column: 1 / -1; padding-left: 10px !important; font-size: 16px; }
+    td:first-child::before { display: none; }
+    td:nth-child(2) { grid-column: 1 / -1; font-size: 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }
 </style>
-<nav aria-label="Calculator mode"><a href="./index.html">Visual calculator</a><a href="./advanced.html" aria-current="page">Advanced ranges</a></nav>
-<h1>Advanced ranges</h1>
-<p>Calculations run locally in your browser. Enter one range per player; board and dead cards are optional.</p>
+<div class="page">
+<header class="navbar"><a href="./index.html" aria-label="Back to calculator"><span aria-hidden="true">‹</span>Calculator</a><h1>Advanced</h1><span></span></header>
+<p class="lede">Calculations run locally in your browser. Enter one range per player (2–10); board and dead cards are optional.</p>
 <form id="form">
-  <label>Game <select id="game"><option value="holdem">Hold’em</option><option value="omaha">Omaha high</option><option value="omaha8">Omaha eight-or-better</option></select></label>
-  <label>Player ranges · one per line<textarea id="ranges" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="range-help">AA
-KK</textarea></label>
-  <small id="range-help">Hold’em: AA, AKs, QQ+. Omaha: AsKsQhJh, AA$ds. Use 2–10 players.</small>
-  <label>Board <input id="board" placeholder="e.g. 2c3d4h" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
-  <label>Dead cards <input id="dead" placeholder="e.g. As" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
-  <label>Method <select id="method"><option value="auto">Automatic</option><option value="monte_carlo">Monte Carlo</option><option value="exact">Exact</option></select></label>
-  <label>Monte Carlo samples <input id="samples" type="number" min="1" value="100000"></label>
-  <details><summary>Seed and calculation limits</summary>
-    <label>Seed · blank for random<input id="seed" inputmode="numeric" placeholder="e.g. 42"></label>
-    <label>Maximum exact outcomes<input id="max-exact" inputmode="numeric" value="2000000"></label>
-    <label>Maximum Monte Carlo attempts · 0 is automatic<input id="max-attempts" inputmode="numeric" value="0"></label>
-  </details>
-  <div class="actions"><button id="run">Calculate</button> <button id="cancel" type="button" disabled>Cancel</button></div>
+  <h2 class="group-title" style="font-weight:400">Game</h2>
+  <div class="group game-select"><select id="game" aria-label="Game"><option value="holdem">Hold’em</option><option value="omaha">Omaha high</option><option value="omaha8">Omaha eight-or-better</option></select></div>
+
+  <h2 class="group-title" style="font-weight:400">Ranges · one per line</h2>
+  <div class="group"><textarea id="ranges" aria-label="Player ranges, one per line" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">AA
+KK</textarea></div>
+  <p class="group-foot" id="range-help">Hold’em: AA, AKs, QQ+. Omaha: AsKsQhJh, AA$ds.</p>
+
+  <h2 class="group-title" style="font-weight:400">Cards</h2>
+  <div class="group">
+    <label class="row"><span>Board</span><input id="board" placeholder="e.g. 2c3d4h" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></label>
+    <label class="row"><span>Dead</span><input id="dead" placeholder="e.g. As" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></label>
+  </div>
+
+  <h2 class="group-title" style="font-weight:400">Method</h2>
+  <div class="group">
+    <label class="row"><span>Method</span><select id="method"><option value="auto">Automatic</option><option value="monte_carlo">Monte Carlo</option><option value="exact">Exact</option></select></label>
+    <label class="row"><span>Samples</span><input id="samples" type="number" inputmode="numeric" min="1" value="100000"></label>
+    <details><summary>Seed and limits</summary>
+      <label class="row"><span>Seed</span><input id="seed" inputmode="numeric" placeholder="blank = random"></label>
+      <label class="row"><span>Max exact outcomes</span><input id="max-exact" inputmode="numeric" value="2000000"></label>
+      <label class="row"><span>Max MC attempts</span><input id="max-attempts" inputmode="numeric" value="0"></label>
+    </details>
+  </div>
+  <p class="group-foot">Samples apply to Monte Carlo. Max attempts of 0 is automatic.</p>
+
+  <div class="actions"><button id="run">Calculate</button><button id="cancel" type="button" disabled>Cancel</button></div>
 </form>
-<p id="status" role="status"></p><div id="progress-panel" hidden><progress id="calc-progress" max="100" aria-label="Calculation progress"></progress><p id="progress-label"></p></div>
+<div class="run-status"><span id="tag" class="tag" hidden></span><span id="status" role="status"></span></div>
+<div id="progress-panel" hidden><progress id="calc-progress" max="100" aria-label="Calculation progress"></progress><p id="progress-label"></p></div>
 <div id="result"></div>
+
+<details class="group ref"><summary>Syntax reference</summary>
+  <div class="ref-body">
+    <h3>Hold’em</h3>
+    <ul>
+      <li><code>AA</code> <code>AKs</code> <code>AKo</code> pairs, suited, offsuit</li>
+      <li><code>QQ+</code> <code>ATs+</code> plus keeps the first rank fixed (ATs, AJs, AQs, AKs)</li>
+      <li><code>76s-AKs</code> <code>A2s-A5s</code> inclusive spans</li>
+      <li><code>AA@50%</code> <code>AA@.5</code> relative weight</li>
+    </ul>
+    <h3>Combining</h3>
+    <ul>
+      <li><code>,</code> union: <code>AA,KK</code></li>
+      <li><code>:</code> intersection: <code>KK:$ds</code></li>
+      <li><code>!</code> exclusion: <code>AA!As</code>; leading <code>!AA</code> is everything but AA</li>
+      <li>Precedence: <code>,</code> lowest, then <code>!</code>, then <code>:</code>. Use parentheses: <code>(AA,KK):$ds</code></li>
+    </ul>
+    <h3>Omaha</h3>
+    <ul>
+      <li><code>AA$ds</code> double suited (<code>xxyy</code>); <code>$ss</code> single suited (2+1+1); <code>$r</code> rainbow</li>
+      <li><code>$ts</code> three of one suit; <code>$ms</code> four of one suit</li>
+      <li><code>$hs</code> top card shares a suit; <code>$as</code> an ace shares a suit; <code>$bs</code> two top cards suited separately</li>
+      <li>Suit variables: <code>xxyy</code> 2+2, <code>xxyz</code> 2+1+1, <code>xyzw</code> four suits</li>
+      <li>Rank sets: <code>[AKQ]</code> or <code>[K-T]</code>; <code>*</code> wildcard</li>
+      <li>Two-card grids: <code>{AA,KK|A2,A3}</code> picks two cards from each side</li>
+    </ul>
+    <p>Omaha <code>AA</code> includes any hand containing two aces plus anything (use <code>AA!AAA</code> to drop trips and quads). Not supported: top-N% rankings, <code>9876+</code> rundown shifts, <code>(AK)(QJ)</code> groups. Spell out rundowns: <code>9876,T987,JT98</code>.</p>
+  </div>
+</details>
+</div>
 <script type="module">
   import { Calculator } from './poker.js';
   const $ = id => document.getElementById(id);
@@ -60,24 +175,28 @@ KK</textarea></label>
   if (['holdem', 'omaha', 'omaha8'].includes(params.get('game'))) $('game').value = params.get('game');
   for (const id of ['ranges', 'board', 'dead']) if (params.has(id)) $(id).value = params.get(id);
   let calculator;
-  function render(r) {
-      const table = document.createElement('table');
+  function setTag(text, live) { const t = $('tag'); t.hidden = !text; t.textContent = text || ''; t.classList.toggle('live', !!live); }
+  function render(r, live = false) {
+      const table = document.createElement('table'); $('result').replaceChildren();
       const head = table.createTHead().insertRow();
-      const labels = ['Player', 'Equity', 'StdErr', 'Win / Scoop', 'Combos'];
+      const labels = ['Player', 'Equity', $('game').value === 'omaha8' ? 'Scoop' : 'Win', 'Tie', 'StdErr', 'Combos'];
       for (const label of labels) { const th = document.createElement('th'); th.scope = 'col'; th.textContent = label; head.append(th); }
       const body = table.createTBody();
       for (const [i, p] of r.players.entries()) {
         const row = body.insertRow();
         for (const [column, value] of [r.labels[i], `${(p.equity * 100).toFixed(3)}%`,
-          Number.isFinite(p.stderr) ? `${(p.stderr * 100).toFixed(3)}%` : '—', `${(p.win * 100).toFixed(3)}%`, r.rangeSizes[i]].entries()) {
+          `${(p.win * 100).toFixed(2)}%`, `${((p.tie ?? 0) * 100).toFixed(2)}%`,
+          Number.isFinite(p.stderr) ? `${(p.stderr * 100).toFixed(3)}%` : '—', r.rangeSizes[i].toLocaleString()].entries()) {
           const cell = row.insertCell(); cell.dataset.label = labels[column]; cell.textContent = value;
         }
       }
-      $('result').append(table); $('status').textContent = `${r.method} · ${r.outcomes.toLocaleString()} outcomes · ${r.elapsed.toFixed(3)}s`;
+      $('result').append(table); setTag(live ? 'live' : r.method === 'exact' ? 'exact' : 'monte carlo', live);
+      $('status').textContent = `${r.outcomes.toLocaleString()} outcomes · ${r.elapsed.toFixed(3)}s`; $('status').parentElement.classList.remove('error');
   }
   $('form').onsubmit = async event => {
     event.preventDefault(); calculator?.dispose(); $('result').replaceChildren();
-    $('progress-panel').hidden = false; $('calc-progress').removeAttribute('value'); $('progress-label').textContent = 'Preparing ranges…'; $('run').disabled = true; $('cancel').disabled = false; $('status').textContent = 'Calculating…';
+    $('progress-panel').hidden = false; $('calc-progress').removeAttribute('value'); $('progress-label').textContent = 'Preparing ranges…'; $('run').disabled = true; $('cancel').disabled = false; $('status').textContent = 'Calculating…'; setTag('');
+    $('status').parentElement.classList.remove('error');
     calculator = new Calculator($('ranges').value.split('\n').map(r => r.trim()).filter(Boolean),
       { game: $('game').value, board: $('board').value, dead: $('dead').value });
     try {
@@ -85,12 +204,12 @@ KK</textarea></label>
       const r = await calculator.equity({ method: $('method').value, samples: Number($('samples').value),
         seed: $('seed').value.trim() ? uint('seed') : undefined, maxExact: uint('max-exact'), maxAttempts: uint('max-attempts'),
         onProgress: p => {
-          if (p.players.length) render(p);
+          if (p.players.length) render(p, true);
           if (p.target) { $('calc-progress').value = Number(p.outcomes) / Number(p.target) * 100; $('progress-label').textContent = `${p.outcomes.toLocaleString()} / ${p.target.toLocaleString()} samples`; }
           else $('progress-label').textContent = 'Enumerating exact outcomes…';
         } });
       render(r); $('calc-progress').value = 100; $('progress-label').textContent = 'Complete';
-    } catch (error) { $('status').textContent = error.message; }
+    } catch (error) { setTag(''); $('status').textContent = error.message; $('status').parentElement.classList.toggle('error', error.message !== 'Calculation cancelled'); }
     finally { $('run').disabled = false; $('cancel').disabled = true; }
   };
   $('cancel').onclick = () => calculator?.dispose();

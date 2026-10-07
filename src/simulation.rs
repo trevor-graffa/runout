@@ -461,6 +461,11 @@ pub struct MonteCarloSession {
     acc: Acc,
     target: u64,
     limit: u64,
+    free: [bool; 10],
+    any_free: bool,
+}
+fn binomial(n: u32, k: u32) -> u64 {
+    (0..k).fold(1u64, |r, i| r * (n - i) as u64 / (i + 1) as u64)
 }
 impl MonteCarloSession {
     pub fn new(
@@ -512,9 +517,20 @@ impl MonteCarloSession {
         } else {
             None
         };
+        // A "free" player holds the full uniform universe of hands from the
+        // unblocked cards (all C(n, k) subsets, equal weights).
+        let k = game.hole_size() as u32;
+        let universe = binomial(52 - blocked.count_ones(), k);
+        let mut free = [false; 10];
+        for (f, r) in free.iter_mut().zip(&ranges) {
+            *f = r.alias.is_none() && r.combos.len() as u64 == universe;
+        }
+        let any_free = free.iter().any(|&f| f);
         Self {
             ranges,
             game,
+            free,
+            any_free,
             board,
             initial_len: initial.len(),
             blocked,
@@ -540,11 +556,16 @@ impl MonteCarloSession {
             .outcomes
             .saturating_add(max_outcomes)
             .min(self.target);
+        // Bound work per call so low-acceptance deals still yield to the caller.
+        let call_cap = max_outcomes.saturating_mul(64).max(1_000_000);
+        let mut call_attempts = 0u64;
+        let hole = self.game.hole_size();
         let t = tables();
         let omaha = omaha_for(self.game);
         let mut holes = [Prepared::hole(Game::Holdem, &[0, 1], t); 10];
         let mut values = [Value::default(); 10];
-        while self.acc.outcomes < end {
+        while self.acc.outcomes < end && call_attempts < call_cap {
+            call_attempts += 1;
             if self.acc.attempts >= self.limit {
                 return Err(Error::limit("Monte Carlo attempt limit exceeded: ranges may be incompatible or heavily overlapping"));
             }
@@ -552,6 +573,9 @@ impl MonteCarloSession {
             let mut used = self.blocked;
             let mut legal = true;
             for (i, r) in self.ranges.iter().enumerate() {
+                if self.free[i] {
+                    continue;
+                }
                 let c = r.draw(&mut self.rng);
                 if used & c.mask != 0 {
                     legal = false;
@@ -562,6 +586,31 @@ impl MonteCarloSession {
             }
             if !legal {
                 continue;
+            }
+            // Exactness of the free-player shortcut: given the restricted players'
+            // cards, the number of ways to deal disjoint free hands depends only on
+            // how many cards are used (a constant), so the restricted players'
+            // marginal is the same as under whole-deal rejection and free players
+            // are uniform over the remaining cards. The target (independent ranges
+            // conditioned on disjointness) is reproduced with no importance weights.
+            if self.any_free {
+                for (i, hole_slot) in holes.iter_mut().enumerate().take(self.ranges.len()) {
+                    if !self.free[i] {
+                        continue;
+                    }
+                    let mut cards = [0u8; 4];
+                    for card in &mut cards[..hole] {
+                        loop {
+                            let c = self.rng.bounded(52) as u8;
+                            if used & (1u64 << c) == 0 {
+                                *card = c;
+                                used |= 1u64 << c;
+                                break;
+                            }
+                        }
+                    }
+                    *hole_slot = Prepared::hole(self.game, &cards[..hole], t);
+                }
             }
             for card in &mut self.board[self.initial_len..] {
                 loop {
@@ -602,7 +651,7 @@ fn monte_carlo(
         limit,
         opt.seed.wrapping_add(worker as u64),
     );
-    session.step(target)?;
+    while !session.step(target)? {}
     Ok(session.acc)
 }
 struct Exact<'a> {

@@ -3,77 +3,125 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1c3027">
-<title>Pocket Equity · Visual poker calculator</title>
-<link rel="stylesheet" href="./visual.css">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Equity">
+<meta name="description" content="Poker equity calculator for Hold’em, Omaha and Omaha Hi-Lo. Runs entirely on your device.">
+<title>Pocket Equity</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="stylesheet" href="./app.css">
 </head>
 <body>
-<div class="shell">
-<header class="topbar">
-  <div class="brand"><span class="brand-mark" aria-hidden="true">♠</span>Pocket Equity</div>
-  <nav class="view-nav" aria-label="Calculator mode"><a href="./index.html" aria-current="page"><span class="nav-long">Visual calculator</span><span class="nav-short">Visual</span></a><a id="advanced-link" href="./advanced.html"><span class="nav-long">Advanced ranges ↗</span><span class="nav-short">Advanced</span></a></nav>
-</header>
-<div class="intro"><span class="eyebrow">Poker equity calculator</span><h1>Poker equity</h1><p>Hold’em · Omaha · Eight-or-better</p></div>
-<div class="game-tabs" role="group" aria-label="Poker game">
-  <button type="button" data-game="holdem" aria-pressed="true"><strong>Hold’em</strong><span>Two hole cards</span></button>
-  <button type="button" data-game="omaha" aria-pressed="false"><strong>Omaha</strong><span>Four cards · high</span></button>
-  <button type="button" data-game="omaha8" aria-pressed="false"><strong>Omaha Hi-Lo</strong><span>Eight-or-better</span></button>
-</div>
-<main class="workspace compact-workspace">
-<div class="inputs">
-  <section class="panel" aria-labelledby="players-title">
-    <div class="panel-head"><div><h2 id="players-title">Players <span id="player-count" class="pill">2</span></h2><p class="small muted">Double-tap a range to edit.</p></div><div class="run-actions"><button id="cancel" type="button" hidden>Cancel</button><button id="calculate" type="button" class="primary">Calculate</button></div></div>
-    <div id="players" class="player-list"></div><div id="player-pages" hidden><button id="previous-players" type="button">Previous</button><span id="player-page"></span><button id="next-players" type="button">Next</button></div>
-    <button id="add-player" class="add-player" type="button">＋ Add a player</button>
-    <div id="results" aria-live="polite"></div>
-    <span id="result-tag" class="pill result-tag">Ready to calculate</span>
-    <p id="status" role="status" aria-live="polite"></p><div id="progress-panel" hidden><progress id="calc-progress" max="100" aria-label="Calculation progress"></progress><p id="progress-label" class="small muted"></p></div>
-  </section>
-  <section class="panel" aria-labelledby="board-title">
-    <div class="panel-head"><div><h2 id="board-title">The board</h2><p class="small muted">Tap a card to choose the flop, turn, or river.</p></div><button id="clear-board" type="button" class="small">Clear</button></div>
-    <div id="board-cards" class="card-strip" aria-label="Board cards"></div>
-    <p id="board-note" class="board-note small muted">Leave empty to calculate preflop.</p>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="segmented game-picker" role="radiogroup" aria-label="Game">
+      <button type="button" role="radio" data-game="holdem">Hold’em</button>
+      <button type="button" role="radio" data-game="omaha">Omaha</button>
+      <button type="button" role="radio" data-game="omaha8">Hi-Lo</button>
+    </div>
+    <button type="button" class="icon-button" id="open-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </header>
+
+  <section class="run" aria-label="Calculation">
+    <button type="button" id="calculate" class="calculate">
+      <span class="calculate-fill" aria-hidden="true"></span>
+      <span class="calculate-label" id="calculate-label">Calculate</span>
+      <span class="calculate-value" id="calculate-value"></span>
+    </button>
+    <p class="run-status" id="run-status" role="status" aria-live="polite"></p>
   </section>
 
+  <main class="players" id="players" aria-label="Players"></main>
+
+  <section class="table" aria-label="Board and dead cards">
+    <button type="button" class="board" id="open-board" aria-describedby="board-caption">
+      <span class="board-cards" id="board-cards"></span>
+      <span class="board-caption" id="board-caption"></span>
+    </button>
+  </section>
 </div>
 
-<button id="open-options" type="button">Options · dead cards</button>
-</main>
-</div>
-<dialog id="options-dialog"><div class="dialog-head"><h2>Calculation options</h2><button id="close-options" type="button">Done</button></div><div class="option-fields">
-    <label>Accuracy<select id="samples"><option value="100000">Quick · 100,000 samples</option><option value="1000000">Detailed · 1 million samples</option><option value="5000000">Precise · 5 million samples</option></select></label>
-    <label>Method<select id="method"><option value="auto">Automatic</option><option value="monte_carlo">Monte Carlo</option><option value="exact">Exact enumeration</option></select></label>
-    <label>Dead cards<input id="dead" placeholder="e.g. As Kd" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-  </div></dialog>
-<dialog id="range-editor" class="range-dialog" aria-labelledby="editor-title">
-<div class="range-topbar"><button id="cancel-range" type="button">Cancel</button><h2 id="editor-title">Hero’s range</h2><button id="done-range" type="button" class="primary">Done</button></div>
-<div class="range-tabs mode-tabs"><button id="show-hands" type="button" aria-pressed="true">Hands</button><button id="show-filters" type="button" aria-pressed="false">Suits</button><button id="show-constraints" type="button" aria-pressed="false">Rundown</button></div><div class="range-content">
-    <p id="editor-badge" class="eyebrow" style="margin-bottom:12px">Hold’em</p>
-    <div class="mode-tabs" role="group" aria-label="Hand selection mode"><button type="button" data-mode="range" aria-pressed="true">Build a range</button><button type="button" data-mode="cards" aria-pressed="false">Choose exact cards</button></div>
-    <div id="exact-editor" hidden><div id="hole-cards" class="card-strip" aria-label="Hole cards"></div><p class="small muted board-note">Tap each card to choose a specific hand.</p></div>
-    <div id="holdem-editor">
-      <div id="holdem-presets" class="chip-row" aria-label="Hold’em presets"></div>
-      <div class="matrix-scroll" tabindex="0" aria-label="Scroll the Hold’em range grid"><div id="matrix" class="matrix" role="group" aria-label="Hold’em hand classes"></div></div>
-      <div class="legend"><span>Pairs on the diagonal · suited above · offsuit below</span><button id="grid-size" type="button" aria-pressed="false">Larger targets</button></div>
+<!-- Range / hand editor -->
+<dialog class="sheet full" id="editor" aria-labelledby="editor-title">
+  <div class="sheet-nav">
+    <button type="button" class="nav-button" id="editor-cancel">Cancel</button>
+    <div class="nav-title"><h2 id="editor-title" tabindex="-1" autofocus>Hero</h2><span id="editor-subtitle"></span></div>
+    <button type="button" class="nav-button strong" id="editor-done">Done</button>
+  </div>
+  <div class="editor-bar">
+    <div class="segmented" role="radiogroup" aria-label="Range or exact hand" id="editor-mode">
+      <button type="button" role="radio" data-mode="range">Range</button>
+      <button type="button" role="radio" data-mode="cards">Exact hand</button>
     </div>
-    <div id="omaha-editor" hidden>
-      <div class="mode-tabs" aria-label="Omaha builder style"><button data-build="family" type="button">Hand families</button><button data-build="pairs" type="button">Two-card grids</button></div>
-      <div id="omaha-families">
-      <h3>Start with a hand family</h3><div id="omaha-presets" class="texture-grid" aria-label="Omaha hand families"></div>
-      <div id="rundown-controls" class="option-fields" hidden></div><div id="rank-slots" class="rank-slots" hidden></div><p id="texture-detail" class="small muted board-note"></p>
-      </div>
-      <div id="omaha-pairs" hidden>
-        <div id="pair-presets" class="chip-row"></div>
-        <p class="small muted">Each grid selects two cards of the four-card hand. High only leaves the second grid unrestricted. All four cards must be distinct.</p>
-        <div class="mode-tabs pair-tabs"><button data-group="0" type="button">Group 1</button><button data-group="1" type="button">Group 2</button></div>
-        <div class="pair-grids"><section class="pair-group" data-pair-panel="0"><h3>Group 1</h3><div class="matrix-scroll"><div id="pair-grid-0" class="matrix" role="group" aria-label="First two-card group"></div></div></section><section class="pair-group" data-pair-panel="1"><h3>Group 2</h3><div class="matrix-scroll"><div id="pair-grid-1" class="matrix" role="group" aria-label="Second two-card group"></div></div></section></div>
-        <button id="pair-grid-size" type="button" class="small" style="margin-top:10px">Larger targets</button>
-      </div>
-      <div class="suited-section"><h3>Suit texture</h3><div id="suitedness" class="chip-row" aria-label="Omaha suitedness"></div><p id="suit-detail" class="small muted"></p><h3 style="margin-top:16px">Which cards are suited?</h3><div id="suit-connection" class="chip-row"></div><p id="connection-detail" class="small muted"></p></div>
+    <button type="button" class="icon-button danger" id="remove-player" aria-label="Remove player">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1zM6 9h12l-.8 11.1A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.9L6 9z"/></svg>
+    </button>
+  </div>
+  <div class="editor-body" id="editor-body"></div>
+</dialog>
+
+<!-- Board & dead cards -->
+<dialog class="sheet" id="board-sheet" aria-labelledby="board-title">
+  <div class="sheet-nav">
+    <button type="button" class="nav-button" id="board-clear">Clear</button>
+    <div class="nav-title"><h2 id="board-title" tabindex="-1" autofocus>Cards</h2></div>
+    <button type="button" class="nav-button strong" id="board-done">Done</button>
+  </div>
+  <div class="sheet-content">
+    <div class="segmented" role="radiogroup" aria-label="Board or dead cards" id="board-mode">
+      <button type="button" role="radio" data-target="board">Board</button>
+      <button type="button" role="radio" data-target="dead">Dead cards</button>
     </div>
-    <section id="range-suits"><h3>Specific suits</h3><div id="range-suit-slots" class="rank-slots"></div><p class="small muted">Required suits in any card order. Any leaves that card unrestricted.</p></section><div class="grid-actions"><span id="selection-count">No cells selected</span><button id="add-selection" type="button">Add</button><button id="remove-selection" type="button">Remove</button><button id="clear-selection" type="button" aria-label="Clear grid selection">Clear</button></div><div class="range-preview"><strong id="range-count">6 combinations selected</strong><span id="range-percent" class="small muted"></span><code id="range-expression">AA</code><div id="range-examples" class="preview-examples"></div></div>
-</div></dialog>
-<dialog id="card-picker" aria-labelledby="picker-title"><div class="dialog-head"><h2 id="picker-title">Choose a card</h2><button id="close-picker" type="button" aria-label="Close card picker">×</button></div><p class="small muted" style="margin-bottom:12px">Choose a rank, then a suit. Used cards are unavailable.</p><div id="rank-picker" class="rank-picker" aria-label="Card rank"></div><div id="suit-picker" class="suit-picker" aria-label="Card suit"></div><button id="clear-card" type="button" class="clear-card">Clear this card</button></dialog>
-<script type="module" src="./visual.js"></script>
+    <div class="slots" id="board-slots"></div>
+    <p class="hint" id="board-hint"></p>
+    <div class="deck" id="board-deck" role="group" aria-label="Deck"></div>
+  </div>
+</dialog>
+
+<!-- Settings -->
+<dialog class="sheet" id="settings" aria-labelledby="settings-title">
+  <div class="sheet-nav">
+    <span></span>
+    <div class="nav-title"><h2 id="settings-title" tabindex="-1" autofocus>Settings</h2></div>
+    <button type="button" class="nav-button strong" id="settings-done">Done</button>
+  </div>
+  <div class="sheet-content">
+    <h3 class="group-title">Method</h3>
+    <div class="group">
+      <div class="segmented" role="radiogroup" aria-label="Method" id="method">
+        <button type="button" role="radio" data-value="auto">Automatic</button>
+        <button type="button" role="radio" data-value="exact">Exact</button>
+        <button type="button" role="radio" data-value="monte_carlo">Monte Carlo</button>
+      </div>
+      <p class="group-note" id="method-note"></p>
+    </div>
+    <h3 class="group-title">Monte Carlo samples</h3>
+    <div class="group">
+      <div class="segmented" role="radiogroup" aria-label="Monte Carlo samples" id="samples">
+        <button type="button" role="radio" data-value="100000">100K</button>
+        <button type="button" role="radio" data-value="1000000">1M</button>
+        <button type="button" role="radio" data-value="5000000">5M</button>
+        <button type="button" role="radio" data-value="20000000">20M</button>
+      </div>
+      <p class="group-note">Results update live while sampling. Stop at any time to keep a partial result.</p>
+    </div>
+    <div class="group list">
+      <a class="list-row" id="advanced-link" href="./advanced.html">
+        <span><strong>Advanced text mode</strong><small>Full range syntax, seeds and limits</small></span><span class="chevron" aria-hidden="true">›</span>
+      </a>
+      <button type="button" class="list-row danger" id="reset-all"><span><strong>Reset all players and cards</strong></span></button>
+    </div>
+    <p class="footnote">Every calculation runs on this device with the same Rust engine used by the Python package. Nothing is uploaded.</p>
+  </div>
+</dialog>
+
+<script type="module" src="./app.js"></script>
 </body>
 </html>

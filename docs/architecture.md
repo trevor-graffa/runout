@@ -13,8 +13,19 @@ Production Python and WASM builds do not compile or link C++.
 
 The web app uses HTML and JavaScript. `web/poker.js` provides an asynchronous
 Calculator, `web/ranges.js` expands high-level text ranges, and `web/worker.js`
-owns a Rust/WASM calculator. Worker messages carry requests/results; evaluation
+owns a Rust/WASM calculator. `web/preview-worker.js` counts ranges and samples
+example hands off the UI thread. Worker messages carry requests/results; evaluation
 and parsing happen outside the UI thread. The page only fetches static assets.
+
+The phone app is `index.html` with `app.css`, `app.js` (main screen, board sheet,
+settings, calculation), `editor.js` (range/hand editor), `matrix.js` (13×13 grid),
+`deck.js` (52-card picker), `ui.js` (DOM helpers and sheets), `state.js` (state,
+defaults, and localStorage key `pocket-equity:v1`), and `model.js`, a pure model that
+turns Omaha and Hold'em editor choices into range expressions and checks that they
+round-trip through `ranges.js`. `holdem-order.js` ranks the 169 Hold'em classes for
+the Top % slider; `tools/holdem_order.py` generates it with Monte Carlo sampling
+(25M samples per class, seed 42). The manifest and icons allow standalone
+home-screen use.
 There is no equity service, account requirement, or Python browser runtime.
 
 ```js
@@ -44,18 +55,24 @@ over localhost HTTP. Opening HTML directly with `file://` does not work.
 Monte Carlo progress reports cumulative statistics from the same random stream
 as the final result, including actual accepted outcomes. Exact calculations
 show an indeterminate progress indicator and deliver results when enumeration
-finishes. The top Calculate button starts the job; Cancel stops its worker.
+finishes. Calculate becomes Stop, which cancels the job and terminates its worker;
+the partial Monte Carlo result is kept and labelled PARTIAL.
+
+The status line labels a result LIVE, PARTIAL, EXACT, or MONTE CARLO. Monte Carlo
+results show the sample count, a ±95% interval (1.96 × the largest stderr), and time.
 
 ## Mobile and browser limits
 
 The app has touch-sized primary controls, 16px input text, viewport/safe-area
-support, and per-player equity results. The fitted 13×13 range matrix has smaller
-cells to display every hand on a phone; Larger targets offers a scrollable grid. Chrome integration tests exercise 320, 375, 390, and
-768px widths, calculations in all three games, and cancellation during a long
-simulation. WebKit tests also verify touch interaction, worker reuse, errors,
-and seeded multiway results with a mobile viewport. Physical iPhone testing
-remains outstanding; no performance
-claims for a phone are inferred from the M1 measurements.
+support, and per-player equity results. The 13×13 range matrix is fitted to the
+phone width; there is no scrolling grid mode. Chrome tests (`visual-browser.mjs`,
+`browser.mjs`) cover phone-width layouts from 320 to 1100px and heights 568–844px,
+using CDP touch events in mobile emulation. They also check drag-staging, calculations
+in all three games, and cancellation during a long simulation. WebKit tests
+(Playwright, touch emulation) cover touch interaction, worker reuse, errors, and
+seeded multiway results with a mobile viewport. Physical
+iPhone testing has not been performed; no performance claims for a phone are
+inferred from the M1 measurements.
 
 WASM runs one computation thread in one Web Worker. This avoids requiring
 SharedArrayBuffer, cross-origin isolation headers, or special hosting. Native
@@ -100,26 +117,33 @@ Do not run the old `setup.py build_ext --inplace` in a Rust checkout: it would
 overwrite the production extension. The original baseline is also retained in
 Git commit `485160c`. Matched benchmark results are in [performance.md](performance.md).
 
-## Visual range editing
+## Range and board editing
 
-The phone calculator uses a fixed viewport, two-player pages for longer tables,
-and separate dialogs for ranges and calculation options. Double-tap a range or
-use Edit. Cancel restores the range; Done commits it. Hands, Suits, and (for
-rundowns) Rundown tabs separate the controls.
+The main screen lists players in one fixed portrait view; rows compact for 5+ and
+7+ players. Tap a row (or double-tap) to open the editor sheet, which works on a
+draft copy: Cancel discards it and Done commits it. The trash button in the editor
+removes the player. The board strip opens a sheet with Board and Dead cards tabs
+and a 4-row deck; each card is a single tap.
 
-Grid taps and drags stage cells with a gold outline. Add and Remove apply those
-cells to the range, then clear the selection. This works for the Hold’em matrix
-and each Omaha two-card matrix. A touch gesture never scrolls the grid. Larger
-targets deliberately enables local grid scrolling when preferred over a fitted
-matrix. Small editor panels retain overflow as a fallback for accessibility and
-unusually short viewports.
+The Hold’em editor has Range and Exact hand modes. Range shows a live summary
+(shorthand, percentage, and combo count), a Top % slider, quick chips (Pairs,
+Suited, Broadway, Any two, Clear), and the 13×13 matrix. Taps and drags stage cells
+with an amber outline; Add and Remove commit them, and in-range cells show green,
+with partial fill for partial combos. Staged suited, pair, and offsuit cells show
+suit chips that include or exclude exact suit combinations (the first suit is the
+higher-ranked card). Exact hand mode uses the card picker; cards already on the
+board, dead, or held are disabled. Deal random fills a random hand.
 
-Specific suits selects required physical suits in any card order, intersecting
-the existing range. For AA, Hearts plus Spades selects AhAs; Hearts twice is
-empty. These suit slots do not assign suits to rank order. Omaha suit texture
-and highest-card/ace connections remain additional independent constraints.
+The Omaha editor offers hand families (Any, Aces, Big pairs, Broadway, Rundowns,
+Ace–deuce, Low starters, Pick ranks) or two-card grids (first and second pair
+grids, with presets High + low, Middle + middle, and High only). Rundowns take a
+highest-card interval and a min/max distance for each neighbour gap; distance 1
+means consecutive ranks. Impossible constraints show an error rather than widening
+the range. Suit texture is a multi-select (2+2, 2+1+1, rainbow, 3+1, 4), and suited
+cards can be Any, Ace suited, Top card suited, or Top two suited. Must include takes
+four slots, each a distinct card with an optional rank and suit. The editor shows a
+live count and three random example hands.
 
-Rundown controls specify lowest/highest high card and three adjacent rank-distance
-intervals. Distance 1 means consecutive ranks; 2 means one missing rank. Ranks
-are distinct and aces are high. Invalid intervals raise a clear error; valid
-intervals with no matching four-rank pattern produce an empty range.
+`web/model.js` generates the shorthand and range expressions for editor choices.
+Its tests check that they round-trip through `web/ranges.js`, so the summary shown
+for a player parses back to the same range the engine uses.

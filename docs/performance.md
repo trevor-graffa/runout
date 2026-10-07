@@ -34,7 +34,11 @@ upstream project: their published CPU, datasets, interfaces, and benchmarks diff
   use a direct uniform index; nonuniform weights use O(1) alias sampling.
 * Monte Carlo draws board cards directly with rejection of used card IDs, rather
   than scanning the entire deck on every outcome. Whole-hole-tuple rejection
-  retains the intended weighted joint distribution.
+  retains the intended weighted joint distribution. Players whose range is the
+  full uniform universe are dealt directly from the remaining deck instead of
+  rejected, so a wide-open player next to a narrow range no longer stalls. A
+  Monte Carlo step returns after a bounded number of attempts, so the web app's
+  progress keeps moving.
 * Immutable data is shared across workers; each worker has its own RNG and
   accumulators. Python's GIL is released while native simulation runs.
 
@@ -100,10 +104,12 @@ very short latency is noisy and should not drive performance conclusions.
 
 Full suit-isomorphism enumeration, preflop equity caches, joint-range
 preconditioning for pathological collisions, direct flush matrices, and
-implicit/lazy random ranges are possible future optimizations. This version
-keeps explicit physical ranges and independent accepted samples for transparent
-weighting and uncertainty estimates. No Markov-chain samples or fabricated
-top-percent ordering are used.
+a fully lazy representation of other random-like ranges is a possible future
+optimization. This version keeps explicit physical ranges and independent accepted
+samples for transparent weighting and uncertainty estimates. No Markov-chain
+samples are used. The web app's Top % slider uses a precomputed Hold'em class
+ranking (`web/holdem-order.js`, from 25M Monte Carlo samples per class); the range
+grammar itself has no top-percent syntax.
 
 ## Matched Rust and C++ comparison
 

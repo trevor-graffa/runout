@@ -81,7 +81,8 @@ assignment. For example, `AsKsKh3h` satisfies `$bs` using As and Kh as the top
 two cards. `AsKsQhJh` does not. These filters may be appended or intersected
 with `:` like the original suit macros.
 
-The visual builder's High only preset restricts the first pair to ranks T–A
-and leaves the other pair unrestricted. High + low restricts the second pair
-to A,2–8. Middle + middle uses ranks 6–T for both pairs. These describe card
-membership, not hand-strength rankings or a rule for which cards must be played.
+The app's Omaha editor two-card grid presets are also card-membership rules, not
+hand rankings. High only restricts the first pair to ranks T–A and leaves the
+other pair unrestricted. High + low restricts the second pair to A,2–8. Middle +
+middle uses ranks 6–T for both pairs. The editor builds these as ordinary range
+expressions.

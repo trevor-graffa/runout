@@ -134,10 +134,20 @@ python -m http.server 8000 --directory web
 # Open http://localhost:8000
 ```
 
-The app supports 2–10 player ranges, Hold'em, Omaha high, and Omaha8, board/dead
-cards, automatic/exact/Monte Carlo calculation, and cancellation. Touch-sized
-controls and result cards fit small phones. Calculations and range expansion run
-inside a dedicated Web Worker. Stopping a calculation terminates the worker.
+The app is a single phone-sized screen. It supports 2–10 players, Hold'em, Omaha
+high, and Omaha Hi-Lo (Omaha8), board and dead cards, and automatic/exact/Monte
+Carlo calculation. Each player row shows its range summary, equity, and win/tie
+(Hi-Lo: scoop/high/low). Tap a row to edit its range; swipe left to delete it (3+ players).
+The status line reports whether a result is live, partial, exact, or Monte Carlo,
+with sample count, a ±95% interval, and elapsed time. Calculate changes to Stop
+while running; stopping keeps the partial result and terminates the worker.
+Settings includes a link to the text-mode page (`advanced.html`), which carries
+the current game, ranges, board, and dead cards. The app can be added to an iPhone
+home screen as a standalone web app.
+
+Calculations and range expansion run inside dedicated Web Workers, and range
+counting and example hands run in a separate preview worker. Stopping a
+calculation terminates its worker.
 
 **No Python server or computation backend is needed.** Any static HTTPS host can
 serve `web/`, including the generated `web/pkg/` assets. Python remains useful for
@@ -157,8 +167,10 @@ to 100,000 **accepted** outcomes and one thread; request more with `samples` and
 Each player's physical hand has probability proportional to its combo weight.
 The joint deal is conditioned on no overlap with board/dead cards or other
 players. Monte Carlo rejects the **whole independently sampled tuple** on a
-collision, preserving that distribution. Board completions are uniform without
-replacement. Dense collisions can exhaust `max_attempts` (default
+collision, preserving that distribution. Players whose range is the full uniform
+universe (`random`) are instead dealt directly from the cards left over, which is
+exact for that case and avoids stalls when such players are combined with narrow
+ranges. Board completions are uniform without replacement. Dense collisions can exhaust `max_attempts` (default
 `max(100000, 100 * samples)`); narrow ranges, use exact, or raise the limit.
 It raises rather than silently changing the distribution.
 
@@ -186,8 +198,9 @@ parsing, preparation, and simulation.
 ```sh
 python -m pytest -q
 cargo test --release --no-default-features
-node --test web/tests/engine.test.js
-node web/tests/browser.mjs  # real Chrome, including narrow phone layouts
+node --test web/tests/engine.test.js web/tests/model.test.js
+node web/tests/browser.mjs          # real Chrome, including narrow phone layouts
+node web/tests/visual-browser.mjs   # Chrome touch tests for the phone app
 python tools/build_cpp_reference.py --lto
 c++ -std=c++17 -O3 -flto=thin -pthread -Icpp benchmarks/matched.cpp cpp/engine.cpp cpp/fast_eval.cpp cpp/vendor/ompeval/HandEvaluator.cpp -o /tmp/poker-matched-cpp
 cargo build --release --bin benchmark
