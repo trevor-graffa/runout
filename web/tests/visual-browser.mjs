@@ -50,8 +50,8 @@ async function suite(name,type,launch){
   };
   // Sheet has the .shown class and has stopped sliding.
   const settled=id=>page.waitForFunction(i=>{
-    const d=document.getElementById(i);if(!d.classList.contains('shown'))return false;
-    const top=d.getBoundingClientRect().top;const stable=d.__top===top;d.__top=top;return stable;
+    const d=document.getElementById(i);
+    return d.classList.contains('shown')&&getComputedStyle(d).transform==='none'&&!d.getAnimations().length;
   },id,{polling:'raf'});
   const openEditor=async i=>{await page.locator(`[data-player="${i}"]`).tap();await page.locator('#editor').waitFor({state:'visible'});await settled('editor');};
   const doneEditor=async()=>{await page.locator('#editor-done').tap();await closed('editor');};
@@ -193,17 +193,21 @@ async function suite(name,type,launch){
     await open();
     const before=await summaryOf(1);
     await openEditor(1);
+    // Quick chips only stage hands; Add applies them.
     await page.locator('[data-preset="pairs"]').tap();
+    assert.equal(await page.locator('#editor .matrix .staged').count(),13);
+    assert.ok(!(await text('#editor-body .summary-text')).includes('22+'),'chip does not change the range by itself');
+    await page.locator('#add-selection').tap();
     assert.ok((await text('#editor-body .summary-text')).includes('22+'));
     await cancelEditor();
     assert.equal(await summaryOf(1),before,'cancel keeps the range');
     await openEditor(1);
-    await page.locator('[data-preset="pairs"]').tap();
+    await page.locator('[data-preset="pairs"]').tap();await page.locator('#add-selection').tap();
     await page.keyboard.press('Escape');
     await closed('editor');
     assert.equal(await summaryOf(1),before,'escape cancels');
     await openEditor(1);
-    await page.locator('[data-preset="pairs"]').tap();
+    await page.locator('[data-preset="pairs"]').tap();await page.locator('#add-selection').tap();
     await doneEditor();
     const after=await summaryOf(1);
     assert.notEqual(after,before);assert.ok(after.includes('22+'),after);
@@ -351,7 +355,7 @@ async function suite(name,type,launch){
     assert.ok(await combos()>0);
     // Two-card grids builder.
     await page.locator('#editor-body button[data-value="grids"]').tap();
-    await page.locator('[data-grid-preset="pairs"]').tap();
+    await page.locator('[data-preset="pairs"]').tap();await page.locator('#add-selection').tap();
     const pairsOnTop=await combos();
     assert.ok(pairsOnTop>0);
     assert.ok((await text('#editor-body .summary-text')).includes('Top + bottom grids'));
@@ -366,7 +370,7 @@ async function suite(name,type,launch){
     // A pair as both the highest and lowest card means four of a kind: never double suited.
     await page.waitForFunction(()=>/No hands match/.test(document.querySelector('#editor-body .summary-text').textContent));
     await page.locator('#editor-body button[data-grid="0"]').tap();
-    await page.locator('[data-grid-preset="clear"]').tap();
+    await page.locator('[data-preset="clear"]').tap();
     assert.ok((await text('#editor-body .summary-text')).includes('Outer + middle grids'));
     assert.ok(await combos()>0);
     // Custom slots: AKQJ double suited = 36.
@@ -421,7 +425,7 @@ async function suite(name,type,launch){
     await open();
     await page.locator('#add-player').tap();
     await dealBoard(['Ah','Kd','Qs','4c']);
-    await openEditor(1);await page.locator('[data-preset="suited"]').tap();await doneEditor();
+    await openEditor(1);await page.locator('[data-preset="clear"]').tap();await page.locator('[data-preset="suited"]').tap();await page.locator('#add-selection').tap();await doneEditor();
     const summary=await summaryOf(1);
     await page.locator('[data-game="omaha"]').tap();
     await page.locator('[data-game="holdem"]').tap();

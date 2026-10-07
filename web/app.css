@@ -351,6 +351,7 @@ input[type="range"] { flex: 1; min-width: 0; height: 44px; accent-color: var(--a
 }
 .chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .chips.tall .chip { min-height: 44px; }
+.chip.clear { color: var(--danger); background: none; border-style: dashed; }
 
 /* 13×13 matrix */
 .matrix {

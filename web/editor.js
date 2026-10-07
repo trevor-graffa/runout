@@ -1,7 +1,7 @@
 // Range / exact-hand editor. Works on a draft copy: Cancel discards, Done commits.
 import {
   RANKS, SUITS, SUIT_NAMES, HAND_CLASSES, CLASS_BY_TEXT, classCombos, suitPatterns, classState, addClasses, removeClasses,
-  withPattern, holdemPreset, topPercent, holdemShorthand, rangePercent, classPreset, GRID_LAYOUTS,
+  withPattern, topPercent, holdemShorthand, rangePercent, classPreset, GRID_LAYOUTS,
   OMAHA_FAMILIES, TEXTURES, CONNECTIONS, rundownHands, omahaSummary,
 } from './model.js';
 import { HOLDEM_ORDER } from './holdem-order.js';
@@ -76,16 +76,13 @@ function setSummary(summary, { label, combos, percent, error }) {
 function buildHoldem(body) {
   const p = ctx.player, summary = summaryCard();
   summary.examples.remove();
-  const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Quick ranges' },
-    ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['all', 'Any two'], ['clear', 'Clear']].map(([key, label]) =>
-      h('button.chip', { dataset: { preset: key }, onclick: () => { p.holdem = holdemPreset(key); refresh(); } }, label)));
-
   const matrix = createMatrix({
     label: 'Hold’em hand classes',
     fill: text => { const { count, total } = classState(p.holdem, text); return count / total; },
     onStage: () => renderStage(),
   });
   const slider = strengthSlider(matrix, () => renderStage());
+  const presets = quickChips(slider, 'Any two', 'Clear', () => { p.holdem = new Set(); refresh(); });
   const stage = h('div.stage-bar');
   let suitsOpen = null; // null = automatic: open for small selections
 
@@ -166,7 +163,20 @@ function strengthSlider(matrix, onChange) {
     if (!combos) slider.value = '0';
     output.textContent = `${(combos / 13.26).toFixed(1)}%`;
   };
-  return { row: h('div.slider-row', {}, h('label', { for: 'top-percent', text: 'Top' }), slider, output), sync };
+  const stage = classes => {
+    slider.value = '0'; matrix.staged.clear();
+    for (const text of classes) matrix.staged.add(text);
+    matrix.refresh(); onChange();
+  };
+  return { row: h('div.slider-row', {}, h('label', { for: 'top-percent', text: 'Top' }), slider, output), sync, stage };
+}
+
+/** Quick-selection chips: they stage hands like a drag (Add/Remove applies); Clear acts at once. */
+function quickChips(slider, allLabel, clearLabel, onClear) {
+  return h('div.chips.scroll', { role: 'group', 'aria-label': 'Quick selections' },
+    ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['all', allLabel]].map(([key, label]) =>
+      h('button.chip', { dataset: { preset: key }, onclick: () => slider.stage(classPreset(key)) }, label)),
+    h('button.chip.clear', { dataset: { preset: 'clear' }, onclick: onClear }, clearLabel));
 }
 
 function comboFor(text, [s1, s2]) {
@@ -251,9 +261,7 @@ function buildOmaha(body) {
       onStage: () => renderStage(),
     });
     const slider = strengthSlider(matrix, () => renderStage());
-    const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Grid presets' },
-      ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['clear', 'Clear (any)']].map(([key, label]) =>
-        h('button.chip', { dataset: { gridPreset: key }, onclick: () => { o.groups[active] = classPreset(key); update(); } }, label)));
+    const presets = quickChips(slider, 'All', 'Clear (any)', () => { o.groups[active] = new Set(); update(); });
     const stage = h('div.stage-bar');
     function renderStage() {
       slider.sync();
