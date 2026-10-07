@@ -1,0 +1,780 @@
+{
+  "platform": "macOS-26.3-arm64-arm-64bit",
+  "dataset_sha256": "d8949ee26b3871437b0fb35a8e42ce3ad901d954a7c67d1c3ae858d402252d8c",
+  "samples": 1000000,
+  "repeats": 5,
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "cpp_compiler": "Apple clang version 17.0.0 (clang-1700.0.13.5)",
+  "results": [
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "holdem_checked",
+      "working_set": 100000,
+      "per_second": 134894000.0,
+      "checksum": 23129190991700
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "holdem_prepared",
+      "working_set": 100000,
+      "per_second": 241447000.0,
+      "checksum": 23129190991700
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omp_prepared",
+      "working_set": 100000,
+      "per_second": 802536000.0,
+      "checksum": 118413791500
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha_checked",
+      "working_set": 100000,
+      "per_second": 20201700.0,
+      "checksum": 32811073938300
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha_prepared",
+      "working_set": 100000,
+      "per_second": 63500700.0,
+      "checksum": 32811073938300
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha8_checked",
+      "working_set": 100000,
+      "per_second": 16733700.0,
+      "checksum": 34542358621200
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "holdem_checked",
+      "working_set": 100000,
+      "per_second": 138246379.2409237,
+      "checksum": 23129190991700
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "holdem_prepared",
+      "working_set": 100000,
+      "per_second": 283164454.5245956,
+      "checksum": 23129190991700
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha_checked",
+      "working_set": 100000,
+      "per_second": 20753524.142963763,
+      "checksum": 32811073938300
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha_prepared",
+      "working_set": 100000,
+      "per_second": 59072008.51846717,
+      "checksum": 32811073938300
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha8_checked",
+      "working_set": 100000,
+      "per_second": 19849346.79253492,
+      "checksum": 34542358621200
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "holdem_checked",
+      "working_set": 100,
+      "per_second": 137685000.0,
+      "checksum": 23265580500000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "holdem_prepared",
+      "working_set": 100,
+      "per_second": 325121000.0,
+      "checksum": 23265580500000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omp_prepared",
+      "working_set": 100,
+      "per_second": 1229430000.0,
+      "checksum": 119223200000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha_checked",
+      "working_set": 100,
+      "per_second": 38696200.0,
+      "checksum": 32269512400000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha_prepared",
+      "working_set": 100,
+      "per_second": 183524000.0,
+      "checksum": 32269512400000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "cpp",
+      "case": "omaha8_checked",
+      "working_set": 100,
+      "per_second": 34250100.0,
+      "checksum": 33718793800000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "holdem_checked",
+      "working_set": 100,
+      "per_second": 151926236.2875937,
+      "checksum": 23265580500000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "holdem_prepared",
+      "working_set": 100,
+      "per_second": 363611016.6429489,
+      "checksum": 23265580500000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha_checked",
+      "working_set": 100,
+      "per_second": 40682606.787337214,
+      "checksum": 32269512400000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha_prepared",
+      "working_set": 100,
+      "per_second": 192948999.12241006,
+      "checksum": 32269512400000
+    },
+    {
+      "kind": "evaluation",
+      "backend": "rust",
+      "case": "omaha8_checked",
+      "working_set": 100,
+      "per_second": 39510810.02328561,
+      "checksum": 33718793800000
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "holdem_fixed_exact",
+      "threads": 1,
+      "outcomes": 1712304,
+      "per_second": 38785502.76746911,
+      "setup_seconds": 0.0008427919819951057,
+      "players": [
+        {
+          "equity": 0.826366112559452,
+          "stderr": 0.0,
+          "win": 0.8236481372466571,
+          "tie": 0.005435950625589848,
+          "loss": 0.170915912127753,
+          "high_win": 0.8236481372466571,
+          "high_tie": 0.005435950625589848,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.17363388744054795,
+          "stderr": 0.0,
+          "win": 0.170915912127753,
+          "tie": 0.005435950625589848,
+          "loss": 0.8236481372466571,
+          "high_win": 0.170915912127753,
+          "high_tie": 0.005435950625589848,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "holdem_fixed_exact",
+      "threads": 1,
+      "outcomes": 1712304,
+      "per_second": 35954267.23435399,
+      "setup_seconds": 0.0014777500182390213,
+      "players": [
+        {
+          "equity": 0.826366112559452,
+          "stderr": 0.0,
+          "win": 0.8236481372466571,
+          "tie": 0.005435950625589848,
+          "loss": 0.170915912127753,
+          "high_win": 0.8236481372466571,
+          "high_tie": 0.005435950625589848,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.17363388744054795,
+          "stderr": 0.0,
+          "win": 0.170915912127753,
+          "tie": 0.005435950625589848,
+          "loss": 0.8236481372466571,
+          "high_win": 0.170915912127753,
+          "high_tie": 0.005435950625589848,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "holdem_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 9834014.168268604,
+      "setup_seconds": 0.00019950000569224358,
+      "players": [
+        {
+          "equity": 0.7435815,
+          "stderr": 0.0004336721007042543,
+          "win": 0.738388,
+          "tie": 0.010387,
+          "loss": 0.251225,
+          "high_win": 0.738388,
+          "high_tie": 0.010387,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.2564185,
+          "stderr": 0.00043367210070425436,
+          "win": 0.251225,
+          "tie": 0.010387,
+          "loss": 0.738388,
+          "high_win": 0.251225,
+          "high_tie": 0.010387,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "holdem_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 29607515.62072019,
+      "setup_seconds": 0.00019950000569224358,
+      "players": [
+        {
+          "equity": 0.7432815,
+          "stderr": 0.0004338318222166279,
+          "win": 0.738073,
+          "tie": 0.010417,
+          "loss": 0.25151,
+          "high_win": 0.738073,
+          "high_tie": 0.010417,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.2567185,
+          "stderr": 0.00043383182221662804,
+          "win": 0.25151,
+          "tie": 0.010417,
+          "loss": 0.738073,
+          "high_win": 0.25151,
+          "high_tie": 0.010417,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "holdem_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 18625818.278107833,
+      "setup_seconds": 0.0001227501779794693,
+      "players": [
+        {
+          "equity": 0.742733,
+          "stderr": 0.000434151332139358,
+          "win": 0.737546,
+          "tie": 0.010374,
+          "loss": 0.25208,
+          "high_win": 0.737546,
+          "high_tie": 0.010374,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.257267,
+          "stderr": 0.00043415133213935803,
+          "win": 0.25208,
+          "tie": 0.010374,
+          "loss": 0.737546,
+          "high_win": 0.25208,
+          "high_tie": 0.010374,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "holdem_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 70174823.98974442,
+      "setup_seconds": 0.0001227501779794693,
+      "players": [
+        {
+          "equity": 0.743697,
+          "stderr": 0.00043357578366297176,
+          "win": 0.738449,
+          "tie": 0.010496,
+          "loss": 0.251055,
+          "high_win": 0.738449,
+          "high_tie": 0.010496,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.256303,
+          "stderr": 0.0004335757836629718,
+          "win": 0.251055,
+          "tie": 0.010496,
+          "loss": 0.738449,
+          "high_win": 0.251055,
+          "high_tie": 0.010496,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha_fixed_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 9630594.481279787,
+      "setup_seconds": 6.875023245811462e-06,
+      "players": [
+        {
+          "equity": 0.499954,
+          "stderr": 0.00021173460443570078,
+          "win": 0.089617,
+          "tie": 0.820674,
+          "loss": 0.089709,
+          "high_win": 0.089617,
+          "high_tie": 0.820674,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.500046,
+          "stderr": 0.00021173460443570092,
+          "win": 0.089709,
+          "tie": 0.820674,
+          "loss": 0.089617,
+          "high_win": 0.089709,
+          "high_tie": 0.820674,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha_fixed_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 27721820.342053592,
+      "setup_seconds": 6.875023245811462e-06,
+      "players": [
+        {
+          "equity": 0.500024,
+          "stderr": 0.0002121710263927297,
+          "win": 0.090057,
+          "tie": 0.819934,
+          "loss": 0.090009,
+          "high_win": 0.090057,
+          "high_tie": 0.819934,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.499976,
+          "stderr": 0.0002121710263927298,
+          "win": 0.090009,
+          "tie": 0.819934,
+          "loss": 0.090057,
+          "high_win": 0.090009,
+          "high_tie": 0.819934,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha_fixed_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 16989226.14581356,
+      "setup_seconds": 7.790978997945786e-06,
+      "players": [
+        {
+          "equity": 0.5005955,
+          "stderr": 0.000211883081613871,
+          "win": 0.090385,
+          "tie": 0.820421,
+          "loss": 0.089194,
+          "high_win": 0.090385,
+          "high_tie": 0.820421,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.4994045,
+          "stderr": 0.000211883081613871,
+          "win": 0.089194,
+          "tie": 0.820421,
+          "loss": 0.090385,
+          "high_win": 0.089194,
+          "high_tie": 0.820421,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha_fixed_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 65568576.18470114,
+      "setup_seconds": 7.790978997945786e-06,
+      "players": [
+        {
+          "equity": 0.500455,
+          "stderr": 0.00021180731299305481,
+          "win": 0.09018,
+          "tie": 0.82055,
+          "loss": 0.08927,
+          "high_win": 0.09018,
+          "high_tie": 0.82055,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.499545,
+          "stderr": 0.00021180731299305462,
+          "win": 0.08927,
+          "tie": 0.82055,
+          "loss": 0.09018,
+          "high_win": 0.08927,
+          "high_tie": 0.82055,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 3464806.369915038,
+      "setup_seconds": 0.058868749998509884,
+      "players": [
+        {
+          "equity": 0.687222,
+          "stderr": 0.00046199581833187214,
+          "win": 0.684206,
+          "tie": 0.006032,
+          "loss": 0.309762,
+          "high_win": 0.684206,
+          "high_tie": 0.006032,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.312778,
+          "stderr": 0.0004619958183318721,
+          "win": 0.309762,
+          "tie": 0.006032,
+          "loss": 0.684206,
+          "high_win": 0.309762,
+          "high_tie": 0.006032,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 14599588.09064562,
+      "setup_seconds": 0.058868749998509884,
+      "players": [
+        {
+          "equity": 0.6873655,
+          "stderr": 0.000461913014293149,
+          "win": 0.684304,
+          "tie": 0.006123,
+          "loss": 0.309573,
+          "high_win": 0.684304,
+          "high_tie": 0.006123,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.3126345,
+          "stderr": 0.0004619130142931489,
+          "win": 0.309573,
+          "tie": 0.006123,
+          "loss": 0.684304,
+          "high_win": 0.309573,
+          "high_tie": 0.006123,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 5877794.75427991,
+      "setup_seconds": 0.02399470843374729,
+      "players": [
+        {
+          "equity": 0.68812,
+          "stderr": 0.00046165959183101443,
+          "win": 0.685157,
+          "tie": 0.005926,
+          "loss": 0.308917,
+          "high_win": 0.685157,
+          "high_tie": 0.005926,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.31188,
+          "stderr": 0.0004616595918310143,
+          "win": 0.308917,
+          "tie": 0.005926,
+          "loss": 0.685157,
+          "high_win": 0.308917,
+          "high_tie": 0.005926,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 24726667.7559149,
+      "setup_seconds": 0.02399470843374729,
+      "players": [
+        {
+          "equity": 0.688399,
+          "stderr": 0.00046153226302288967,
+          "win": 0.685411,
+          "tie": 0.005976,
+          "loss": 0.308613,
+          "high_win": 0.685411,
+          "high_tie": 0.005976,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        },
+        {
+          "equity": 0.311601,
+          "stderr": 0.00046153226302288967,
+          "win": 0.308613,
+          "tie": 0.005976,
+          "loss": 0.685411,
+          "high_win": 0.308613,
+          "high_tie": 0.005976,
+          "low_win": 0.0,
+          "low_tie": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha8_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 3196001.1638503587,
+      "setup_seconds": 0.06153308367356658,
+      "players": [
+        {
+          "equity": 0.567659,
+          "stderr": 0.00040918018909451997,
+          "win": 0.406345,
+          "tie": 0.319241,
+          "loss": 0.274414,
+          "high_win": 0.486991,
+          "high_tie": 0.014641,
+          "low_win": 0.402475,
+          "low_tie": 0.026189
+        },
+        {
+          "equity": 0.432341,
+          "stderr": 0.0004091801890945201,
+          "win": 0.274414,
+          "tie": 0.319241,
+          "loss": 0.406345,
+          "high_win": 0.498368,
+          "high_tie": 0.014641,
+          "low_win": 0.100668,
+          "low_tie": 0.026189
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "cpp",
+      "case": "omaha8_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 12704159.756330052,
+      "setup_seconds": 0.06153308367356658,
+      "players": [
+        {
+          "equity": 0.5682775,
+          "stderr": 0.00040902716938728573,
+          "win": 0.406846,
+          "tie": 0.319432,
+          "loss": 0.273722,
+          "high_win": 0.487531,
+          "high_tie": 0.014892,
+          "low_win": 0.402787,
+          "low_tie": 0.026209
+        },
+        {
+          "equity": 0.4317225,
+          "stderr": 0.00040902716938728573,
+          "win": 0.273722,
+          "tie": 0.319432,
+          "loss": 0.406846,
+          "high_win": 0.497577,
+          "high_tie": 0.014892,
+          "low_win": 0.100902,
+          "low_tie": 0.026209
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha8_ranges_mc",
+      "threads": 1,
+      "outcomes": 1000000,
+      "per_second": 5357431.057944145,
+      "setup_seconds": 0.025852291844785213,
+      "players": [
+        {
+          "equity": 0.5675785,
+          "stderr": 0.0004088749057064257,
+          "win": 0.405762,
+          "tie": 0.320284,
+          "loss": 0.273954,
+          "high_win": 0.48657,
+          "high_tie": 0.01485,
+          "low_win": 0.402725,
+          "low_tie": 0.026281
+        },
+        {
+          "equity": 0.4324215,
+          "stderr": 0.0004088749057064257,
+          "win": 0.273954,
+          "tie": 0.320284,
+          "loss": 0.405762,
+          "high_win": 0.49858,
+          "high_tie": 0.01485,
+          "low_win": 0.101233,
+          "low_tie": 0.026281
+        }
+      ]
+    },
+    {
+      "kind": "simulation",
+      "backend": "rust",
+      "case": "omaha8_ranges_mc",
+      "threads": 4,
+      "outcomes": 1000000,
+      "per_second": 22167255.30510845,
+      "setup_seconds": 0.025852291844785213,
+      "players": [
+        {
+          "equity": 0.56856075,
+          "stderr": 0.0004090709332114248,
+          "win": 0.407253,
+          "tie": 0.319196,
+          "loss": 0.273551,
+          "high_win": 0.487615,
+          "high_tie": 0.015118,
+          "low_win": 0.402341,
+          "low_tie": 0.026528
+        },
+        {
+          "equity": 0.43143925,
+          "stderr": 0.00040907093321142473,
+          "win": 0.273551,
+          "tie": 0.319196,
+          "loss": 0.407253,
+          "high_win": 0.497267,
+          "high_tie": 0.015118,
+          "low_win": 0.100528,
+          "low_tie": 0.026528
+        }
+      ]
+    }
+  ]
+}

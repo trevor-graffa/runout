@@ -4,6 +4,13 @@ Its source and license are in `cpp/vendor/ompeval/`; the pinned revision and
 included files are documented there. The upstream parser and equity simulator
 are not included.
 
+The Rust Hold'em implementation adapts OMPEval's additive perfect-hash lookup
+and flush detection and embeds its generated numeric tables. The ISC attribution
+and license apply to that adaptation as well. Rust does not link the C++ library.
+`tools/regenerate_core.py` reproduces the embedded core data from the pinned
+source. Uncompressed size: 1,008,730 bytes; SHA256:
+`3c3b852de59b1227bbdf2d2d2622d58a345cef1ff60f2ae19556dfd187c52b7a`.
+
 The direct Omaha evaluator is an independent implementation of the separate
 board/hole rank-multiset lookup approach described by Henry Lee's
 [PH Evaluator](https://github.com/HenryRLee/PokerHandEvaluator) and its

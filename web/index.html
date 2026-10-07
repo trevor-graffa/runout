@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c3027">
+<title>Pocket Equity · Visual poker calculator</title>
+<link rel="stylesheet" href="./visual.css">
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">♠</span>Pocket Equity</div>
+  <nav class="view-nav" aria-label="Calculator mode"><a href="./index.html" aria-current="page"><span class="nav-long">Visual calculator</span><span class="nav-short">Visual</span></a><a id="advanced-link" href="./advanced.html"><span class="nav-long">Advanced ranges ↗</span><span class="nav-short">Advanced</span></a></nav>
+</header>
+<div class="intro"><span class="eyebrow">Poker equity calculator</span><h1>Poker equity</h1><p>Hold’em · Omaha · Eight-or-better</p></div>
+<div class="game-tabs" role="group" aria-label="Poker game">
+  <button type="button" data-game="holdem" aria-pressed="true"><strong>Hold’em</strong><span>Two hole cards</span></button>
+  <button type="button" data-game="omaha" aria-pressed="false"><strong>Omaha</strong><span>Four cards · high</span></button>
+  <button type="button" data-game="omaha8" aria-pressed="false"><strong>Omaha Hi-Lo</strong><span>Eight-or-better</span></button>
+</div>
+<main class="workspace compact-workspace">
+<div class="inputs">
+  <section class="panel" aria-labelledby="players-title">
+    <div class="panel-head"><div><h2 id="players-title">Players <span id="player-count" class="pill">2</span></h2><p class="small muted">Double-tap a range to edit.</p></div><div class="run-actions"><button id="cancel" type="button" hidden>Cancel</button><button id="calculate" type="button" class="primary">Calculate</button></div></div>
+    <div id="players" class="player-list"></div><div id="player-pages" hidden><button id="previous-players" type="button">Previous</button><span id="player-page"></span><button id="next-players" type="button">Next</button></div>
+    <button id="add-player" class="add-player" type="button">＋ Add a player</button>
+    <div id="results" aria-live="polite"></div>
+    <span id="result-tag" class="pill result-tag">Ready to calculate</span>
+    <p id="status" role="status" aria-live="polite"></p><div id="progress-panel" hidden><progress id="calc-progress" max="100" aria-label="Calculation progress"></progress><p id="progress-label" class="small muted"></p></div>
+  </section>
+  <section class="panel" aria-labelledby="board-title">
+    <div class="panel-head"><div><h2 id="board-title">The board</h2><p class="small muted">Tap a card to choose the flop, turn, or river.</p></div><button id="clear-board" type="button" class="small">Clear</button></div>
+    <div id="board-cards" class="card-strip" aria-label="Board cards"></div>
+    <p id="board-note" class="board-note small muted">Leave empty to calculate preflop.</p>
+  </section>
+
+</div>
+
+<button id="open-options" type="button">Options · dead cards</button>
+</main>
+</div>
+<dialog id="options-dialog"><div class="dialog-head"><h2>Calculation options</h2><button id="close-options" type="button">Done</button></div><div class="option-fields">
+    <label>Accuracy<select id="samples"><option value="100000">Quick · 100,000 samples</option><option value="1000000">Detailed · 1 million samples</option><option value="5000000">Precise · 5 million samples</option></select></label>
+    <label>Method<select id="method"><option value="auto">Automatic</option><option value="monte_carlo">Monte Carlo</option><option value="exact">Exact enumeration</option></select></label>
+    <label>Dead cards<input id="dead" placeholder="e.g. As Kd" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+  </div></dialog>
+<dialog id="range-editor" class="range-dialog" aria-labelledby="editor-title">
+<div class="range-topbar"><button id="cancel-range" type="button">Cancel</button><h2 id="editor-title">Hero’s range</h2><button id="done-range" type="button" class="primary">Done</button></div>
+<div class="range-tabs mode-tabs"><button id="show-hands" type="button" aria-pressed="true">Hands</button><button id="show-filters" type="button" aria-pressed="false">Suits</button><button id="show-constraints" type="button" aria-pressed="false">Rundown</button></div><div class="range-content">
+    <p id="editor-badge" class="eyebrow" style="margin-bottom:12px">Hold’em</p>
+    <div class="mode-tabs" role="group" aria-label="Hand selection mode"><button type="button" data-mode="range" aria-pressed="true">Build a range</button><button type="button" data-mode="cards" aria-pressed="false">Choose exact cards</button></div>
+    <div id="exact-editor" hidden><div id="hole-cards" class="card-strip" aria-label="Hole cards"></div><p class="small muted board-note">Tap each card to choose a specific hand.</p></div>
+    <div id="holdem-editor">
+      <div id="holdem-presets" class="chip-row" aria-label="Hold’em presets"></div>
+      <div class="matrix-scroll" tabindex="0" aria-label="Scroll the Hold’em range grid"><div id="matrix" class="matrix" role="group" aria-label="Hold’em hand classes"></div></div>
+      <div class="legend"><span>Pairs on the diagonal · suited above · offsuit below</span><button id="grid-size" type="button" aria-pressed="false">Larger targets</button></div>
+    </div>
+    <div id="omaha-editor" hidden>
+      <div class="mode-tabs" aria-label="Omaha builder style"><button data-build="family" type="button">Hand families</button><button data-build="pairs" type="button">Two-card grids</button></div>
+      <div id="omaha-families">
+      <h3>Start with a hand family</h3><div id="omaha-presets" class="texture-grid" aria-label="Omaha hand families"></div>
+      <div id="rundown-controls" class="option-fields" hidden></div><div id="rank-slots" class="rank-slots" hidden></div><p id="texture-detail" class="small muted board-note"></p>
+      </div>
+      <div id="omaha-pairs" hidden>
+        <div id="pair-presets" class="chip-row"></div>
+        <p class="small muted">Each grid selects two cards of the four-card hand. High only leaves the second grid unrestricted. All four cards must be distinct.</p>
+        <div class="mode-tabs pair-tabs"><button data-group="0" type="button">Group 1</button><button data-group="1" type="button">Group 2</button></div>
+        <div class="pair-grids"><section class="pair-group" data-pair-panel="0"><h3>Group 1</h3><div class="matrix-scroll"><div id="pair-grid-0" class="matrix" role="group" aria-label="First two-card group"></div></div></section><section class="pair-group" data-pair-panel="1"><h3>Group 2</h3><div class="matrix-scroll"><div id="pair-grid-1" class="matrix" role="group" aria-label="Second two-card group"></div></div></section></div>
+        <button id="pair-grid-size" type="button" class="small" style="margin-top:10px">Larger targets</button>
+      </div>
+      <div class="suited-section"><h3>Suit texture</h3><div id="suitedness" class="chip-row" aria-label="Omaha suitedness"></div><p id="suit-detail" class="small muted"></p><h3 style="margin-top:16px">Which cards are suited?</h3><div id="suit-connection" class="chip-row"></div><p id="connection-detail" class="small muted"></p></div>
+    </div>
+    <section id="range-suits"><h3>Specific suits</h3><div id="range-suit-slots" class="rank-slots"></div><p class="small muted">Required suits in any card order. Any leaves that card unrestricted.</p></section><div class="grid-actions"><span id="selection-count">No cells selected</span><button id="add-selection" type="button">Add</button><button id="remove-selection" type="button">Remove</button><button id="clear-selection" type="button">Clear selection</button></div><div class="range-preview"><strong id="range-count">6 combinations selected</strong><span id="range-percent" class="small muted"></span><code id="range-expression">AA</code><div id="range-examples" class="preview-examples"></div></div>
+</div></dialog>
+<dialog id="card-picker" aria-labelledby="picker-title"><div class="dialog-head"><h2 id="picker-title">Choose a card</h2><button id="close-picker" type="button" aria-label="Close card picker">×</button></div><p class="small muted" style="margin-bottom:12px">Choose a rank, then a suit. Used cards are unavailable.</p><div id="rank-picker" class="rank-picker" aria-label="Card rank"></div><div id="suit-picker" class="suit-picker" aria-label="Card suit"></div><button id="clear-card" type="button" class="clear-card">Clear this card</button></dialog>
+<script type="module" src="./visual.js"></script>
+</body>
+</html>

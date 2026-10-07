@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=77"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
 
 [project]
 name = "poker-engine"
-version = "0.1.0"
-description = "Python ranges and a C++ equity engine for Hold'em and Omaha"
+version = "0.2.0"
+description = "Python ranges and a Rust equity engine for Hold'em, Omaha and WebAssembly"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT AND ISC"
@@ -14,11 +14,26 @@ license-files = ["LICENSE", "THIRD_PARTY.md", "cpp/vendor/ompeval/LICENSE.txt", 
 [project.scripts]
 poker-engine = "poker_engine.cli:main"
 
-[tool.setuptools]
-packages = ["poker_engine", "poker_engine.data"]
+[project.optional-dependencies]
+notebook = ["pandas>=2"]
 
-[tool.setuptools.package-data]
-poker_engine = ["data/*.bin.gz"]
+[tool.maturin]
+features = ["python"]
+python-source = "."
+module-name = "poker_engine._native"
+strip = true
+exclude = [{ path = "poker_engine/data/*.gz", format = "wheel" },
+           { path = "web/pkg/**/*", format = "sdist" },
+           "**/__pycache__/**"]
+include = [{ path = "data/core.bin.gz", format = "sdist" },
+           { path = "poker_engine/data/omaha.bin.gz", format = "sdist" },
+           { path = "cpp/**/*", format = "sdist" },
+           { path = "tools/**/*", format = "sdist" },
+           { path = "docs/**/*", format = "sdist" },
+           { path = "examples/**/*", format = "sdist" },
+           { path = "web/**/*", format = "sdist" },
+           { path = "tests/**/*", format = "sdist" },
+           { path = "benchmarks/**/*", format = "sdist" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

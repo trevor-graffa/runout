@@ -63,3 +63,25 @@ has 913. Higher multiplicities account for the counts differing from simple
 
 The subset follows PPT's generic pattern and combinator approach. Historical
 PPT behavior across versions and its complete grammar are not guaranteed.
+
+## Additional Omaha builder syntax
+
+These are extensions provided by this library, not claims about historical PPT
+syntax. `{AA,AKs|A2,23}` selects two distinct cards from each Hold'em-style
+range to form one four-card Omaha hand. Physical hands are deduplicated even
+when several partitions match. Each side uses ordinary Hold'em syntax; nested
+braces and weights inside braces are rejected. A weight outside the braces is
+allowed. Suit filters apply to the complete four-card hand.
+
+`$ts` selects exactly three cards of one suit (3+1); `$ms` selects four of one
+suit. `$hs` requires a highest-rank card to share a suit with another card;
+`$as` requires an ace to share a suit. `$bs` requires the two highest-rank cards
+to be suited separately in distinct suits. Rank ties allow any qualifying
+assignment. For example, `AsKsKh3h` satisfies `$bs` using As and Kh as the top
+two cards. `AsKsQhJh` does not. These filters may be appended or intersected
+with `:` like the original suit macros.
+
+The visual builder's High only preset restricts the first pair to ranks T–A
+and leaves the other pair unrestricted. High + low restricts the second pair
+to A,2–8. Middle + middle uses ranks 6–T for both pairs. These describe card
+membership, not hand-strength rankings or a rule for which cards must be played.

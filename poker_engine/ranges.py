@@ -28,7 +28,7 @@ def hole_size(game: str) -> int:
     return 2 if normalize_game(game) == "holdem" else 4
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class Range:
     """Concrete masks and positive relative weights. Each physical hand occurs once."""
     entries: tuple[tuple[int, float], ...]
@@ -55,6 +55,13 @@ class Range:
 
     def __len__(self) -> int:
         return len(self.entries)
+
+    def __repr__(self) -> str:
+        return f"Range({len(self):,} combos, {self.hand_size} cards)"
+
+    @classmethod
+    def parse(cls, text: str, *, game: str = "holdem", blocked="") -> Range:
+        return parse_range(text, game=game, blocked=blocked)
 
     def __reduce__(self):
         # Numeric contents remain serializable after a native capsule has been cached.
@@ -223,11 +230,44 @@ def _atom(text: str, size: int) -> frozenset[int]:
         raise ValueError("Top-N% ranges are not supported; supply explicit classes or weighted hands")
     if text.lower() == "random" or text == "*":
         return _universe(size)
+    if text in ("$hs", "$as", "$bs"):
+        if size != 4:
+            raise ValueError("Rank-dependent suit filters require Omaha")
+        return frozenset(m for m in _universe(4) if _suit_property(m, text))
     if size == 2:
         value = _holdem_atom(text)
         if value is not None:
             return frozenset(value)
     return frozenset(_pattern(text, size))
+
+
+def _suit_property(mask: int, name: str) -> bool:
+    cards = []
+    while mask:
+        bit = mask & -mask; cards.append(bit.bit_length() - 1); mask ^= bit
+    counts = [0] * 4
+    for c in cards:
+        counts[c % 4] += 1
+    high, second = cards[-1] // 4, cards[-2] // 4
+    if name == "$hs":
+        return any(c // 4 == high and counts[c % 4] >= 2 for c in cards)
+    if name == "$as":
+        return any(c // 4 == 12 and counts[c % 4] >= 2 for c in cards)
+    return any(a // 4 == high and b // 4 >= second and a % 4 != b % 4
+               and counts[a % 4] >= 2 and counts[b % 4] >= 2
+               for a in cards for b in cards)
+
+
+@lru_cache(maxsize=32)
+def _paired(text: str) -> frozenset[int]:
+    parts = text.split("|")
+    if len(parts) != 2 or not all(parts) or any(c in text for c in "{}@"):
+        raise ValueError("Use {first Hold'em range|second Hold'em range}; weights go outside")
+    a, b = (_parse_cached(part, 2) for part in parts)
+    if len(a) == len(b) == 1326:
+        return _universe(4)
+    # Each physical hand appears once, regardless of how many pair partitions fit.
+    return frozenset(x | y for x, _ in a.entries for y, _ in b.entries if not x & y)
 
 
 class _Parser:
@@ -275,6 +315,14 @@ class _Parser:
             result = self.union()
             if not self.accept(")"):
                 raise ValueError(f"Expected ')' at position {self.pos}")
+        elif self.accept("{"):
+            if self.size != 4:
+                raise ValueError("Two-card group composition requires Omaha")
+            end = self.text.find("}", self.pos)
+            if end < 0:
+                raise ValueError("Unclosed two-card group")
+            result = dict.fromkeys(_paired(self.text[self.pos:end]), 1.0)
+            self.pos = end + 1
         else:
             start = self.pos; brackets = 0
             while self.pos < len(self.text):
@@ -325,8 +373,8 @@ def parse_range(text: str, *, game: str = "holdem",
     if len(compact) > 4096:
         raise ValueError("Range expression exceeds 4096 characters")
     # PPT's familiar suit macros. Appending a macro intersects the preceding atom.
-    compact = re.sub(r"(?<=[A-Za-z0-9*\])])\$(ds|ss|r)\b", r":$\1", compact)
-    for macro, pattern in (("$ds", "xxyy"), ("$ss", "xxyz"), ("$r", "xyzw")):
+    compact = re.sub(r"(?<=[A-Za-z0-9*\])}])\$(ds|ss|r|ts|ms|hs|as|bs)\b", r":$\1", compact)
+    for macro, pattern in (("$ds", "xxyy"), ("$ss", "xxyz"), ("$r", "xyzw"), ("$ts", "xxxy"), ("$ms", "xxxx")):
         compact = compact.replace(macro, pattern)
     result = _parse_cached(compact, hole_size(game))
     return result.without(blocked) if blocked else result

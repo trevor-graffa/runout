@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#203f71">
+<title>Advanced ranges · Poker equity</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font: 16px system-ui; max-width: 760px; margin: 32px auto; padding: 0 max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); background: #f8fafc; color: #172033; }
+  h1 { margin-bottom: 8px; } p { line-height: 1.5; } form { display: grid; gap: 18px; }
+  label { display: grid; gap: 6px; min-width: 0; } input, select, textarea, button { font: inherit; min-height: 48px; padding: 12px; border: 1px solid #bbc6d4; border-radius: 8px; }
+  input, select, textarea { width: 100%; min-width: 0; background: white; color: inherit; }
+  select { appearance: none; -webkit-appearance: none; height: 48px; padding-right: 40px;
+    background-image: linear-gradient(45deg, transparent 50%, #536176 50%), linear-gradient(135deg, #536176 50%, transparent 50%);
+    background-position: calc(100% - 20px) center, calc(100% - 14px) center; background-size: 6px 6px; background-repeat: no-repeat; }
+  :focus-visible { outline: 3px solid #487cca; outline-offset: 3px; }
+  .actions { display: flex; gap: 12px; } .actions button { flex: 1; }
+  textarea { min-height: 76px; } button { background: #203f71; color: white; cursor: pointer; }
+  button:disabled { opacity: .5; } table { width: 100%; border-collapse: collapse; background: white; }
+  th, td { text-align: left; padding: 12px; border-bottom: 1px solid #dbe2eb; } #status { min-height: 24px; }
+  #result { overflow-x: auto; } th { font-size: 14px; } td { font-variant-numeric: tabular-nums; }
+  nav { display: flex; gap: 12px; margin-bottom: 24px; } nav a { display: flex; align-items: center; min-height: 48px; padding: 12px; border-radius: 8px; border: 1px solid #bbc6d4; color: #203f71; text-decoration: none; }
+  nav a[aria-current] { background: #203f71; color: white; }
+  @media (max-width: 520px) {
+    body { margin-top: 20px; } h1 { font-size: 28px; }
+    table, tbody { display: block; } thead { display: none; }
+    tbody { display: grid; gap: 12px; background: #f8fafc; }
+    tr { display: grid; grid-template-columns: 1fr 1fr; padding: 12px; border: 1px solid #dbe2eb; border-radius: 12px; background: white; }
+    td { padding: 8px; border: 0; overflow-wrap: anywhere; }
+    td::before { content: attr(data-label); display: block; font-size: 12px; color: #536176; margin-bottom: 4px; }
+    td:first-child { grid-column: 1 / -1; font-weight: 600; }
+    td:nth-child(2) { font-size: 22px; color: #203f71; }
+  }
+</style>
+<nav aria-label="Calculator mode"><a href="./index.html">Visual calculator</a><a href="./advanced.html" aria-current="page">Advanced ranges</a></nav>
+<h1>Advanced ranges</h1>
+<p>Calculations run locally in your browser. Enter one range per player; board and dead cards are optional.</p>
+<form id="form">
+  <label>Game <select id="game"><option value="holdem">Hold’em</option><option value="omaha">Omaha high</option><option value="omaha8">Omaha eight-or-better</option></select></label>
+  <label>Player ranges · one per line<textarea id="ranges" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="range-help">AA
+KK</textarea></label>
+  <small id="range-help">Hold’em: AA, AKs, QQ+. Omaha: AsKsQhJh, AA$ds. Use 2–10 players.</small>
+  <label>Board <input id="board" placeholder="e.g. 2c3d4h" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
+  <label>Dead cards <input id="dead" placeholder="e.g. As" spellcheck="false" autocapitalize="off" autocomplete="off"></label>
+  <label>Method <select id="method"><option value="auto">Automatic</option><option value="monte_carlo">Monte Carlo</option><option value="exact">Exact</option></select></label>
+  <label>Monte Carlo samples <input id="samples" type="number" min="1" value="100000"></label>
+  <details><summary>Seed and calculation limits</summary>
+    <label>Seed · blank for random<input id="seed" inputmode="numeric" placeholder="e.g. 42"></label>
+    <label>Maximum exact outcomes<input id="max-exact" inputmode="numeric" value="2000000"></label>
+    <label>Maximum Monte Carlo attempts · 0 is automatic<input id="max-attempts" inputmode="numeric" value="0"></label>
+  </details>
+  <div class="actions"><button id="run">Calculate</button> <button id="cancel" type="button" disabled>Cancel</button></div>
+</form>
+<p id="status" role="status"></p><div id="progress-panel" hidden><progress id="calc-progress" max="100" aria-label="Calculation progress"></progress><p id="progress-label"></p></div>
+<div id="result"></div>
+<script type="module">
+  import { Calculator } from './poker.js';
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.hash.slice(1) || location.search);
+  if (['holdem', 'omaha', 'omaha8'].includes(params.get('game'))) $('game').value = params.get('game');
+  for (const id of ['ranges', 'board', 'dead']) if (params.has(id)) $(id).value = params.get(id);
+  let calculator;
+  function render(r) {
+      const table = document.createElement('table');
+      const head = table.createTHead().insertRow();
+      const labels = ['Player', 'Equity', 'StdErr', 'Win / Scoop', 'Combos'];
+      for (const label of labels) { const th = document.createElement('th'); th.scope = 'col'; th.textContent = label; head.append(th); }
+      const body = table.createTBody();
+      for (const [i, p] of r.players.entries()) {
+        const row = body.insertRow();
+        for (const [column, value] of [r.labels[i], `${(p.equity * 100).toFixed(3)}%`,
+          Number.isFinite(p.stderr) ? `${(p.stderr * 100).toFixed(3)}%` : '—', `${(p.win * 100).toFixed(3)}%`, r.rangeSizes[i]].entries()) {
+          const cell = row.insertCell(); cell.dataset.label = labels[column]; cell.textContent = value;
+        }
+      }
+      $('result').append(table); $('status').textContent = `${r.method} · ${r.outcomes.toLocaleString()} outcomes · ${r.elapsed.toFixed(3)}s`;
+  }
+  $('form').onsubmit = async event => {
+    event.preventDefault(); calculator?.dispose(); $('result').replaceChildren();
+    $('progress-panel').hidden = false; $('calc-progress').removeAttribute('value'); $('progress-label').textContent = 'Preparing ranges…'; $('run').disabled = true; $('cancel').disabled = false; $('status').textContent = 'Calculating…';
+    calculator = new Calculator($('ranges').value.split('\n').map(r => r.trim()).filter(Boolean),
+      { game: $('game').value, board: $('board').value, dead: $('dead').value });
+    try {
+      const uint = id => { const value = $(id).value.trim(); if (!/^\d+$/.test(value)) throw new Error(`${id} must be a nonnegative integer`); return BigInt(value); };
+      const r = await calculator.equity({ method: $('method').value, samples: Number($('samples').value),
+        seed: $('seed').value.trim() ? uint('seed') : undefined, maxExact: uint('max-exact'), maxAttempts: uint('max-attempts'),
+        onProgress: p => {
+          if (p.players.length) render(p);
+          if (p.target) { $('calc-progress').value = Number(p.outcomes) / Number(p.target) * 100; $('progress-label').textContent = `${p.outcomes.toLocaleString()} / ${p.target.toLocaleString()} samples`; }
+          else $('progress-label').textContent = 'Enumerating exact outcomes…';
+        } });
+      render(r); $('calc-progress').value = 100; $('progress-label').textContent = 'Complete';
+    } catch (error) { $('status').textContent = error.message; }
+    finally { $('run').disabled = false; $('cancel').disabled = true; }
+  };
+  $('cancel').onclick = () => calculator?.dispose();
+</script>
+</html>

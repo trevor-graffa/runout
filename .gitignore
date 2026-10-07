@@ -8,4 +8,9 @@ dist/
 .pytest_cache/
 .venv/
 benchmarks/results.json
-
+target/
+.tools/
+web/pkg/
+node_modules/
+*.dylib
+.DS_Store

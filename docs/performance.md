@@ -38,7 +38,7 @@ upstream project: their published CPU, datasets, interfaces, and benchmarks diff
 * Immutable data is shared across workers; each worker has its own RNG and
   accumulators. Python's GIL is released while native simulation runs.
 
-## Local measurements
+## Historical C++ measurements
 
 Measured on the provided macOS arm64 workstation, Python 3.12.11 in the `ai`
 conda environment, Apple Clang 17, `-O3`, C++17. End-to-end runs used 1,000,000
@@ -88,7 +88,7 @@ not be mistaken for full simulation throughput.
 ## Reproduce
 
 ```sh
-python setup.py build_ext --inplace
+python tools/build_cpp_reference.py --lto
 PYTHONPATH=. python benchmarks/benchmark.py --samples 1000000 --output benchmarks/results.json
 c++ -std=c++17 -O3 -pthread -Icpp benchmarks/evaluator.cpp cpp/engine.cpp cpp/fast_eval.cpp cpp/vendor/ompeval/HandEvaluator.cpp -o /tmp/poker-evaluator-benchmark
 /tmp/poker-evaluator-benchmark
@@ -104,3 +104,52 @@ implicit/lazy random ranges are possible future optimizations. This version
 keeps explicit physical ranges and independent accepted samples for transparent
 weighting and uncertainty estimates. No Markov-chain samples or fabricated
 top-percent ordering are used.
+
+## Matched Rust and C++ comparison
+
+The preserved C++ and Rust builds were measured on the same M1 workstation,
+with thin LTO, identical pregenerated distinct-card inputs, matched checksums,
+and five-run medians. The full report is [comparison.json](../benchmarks/comparison.json).
+These measurements include the cumulative Monte Carlo implementation used by
+browser progress updates. Rates below are millions per second.
+
+| Evaluation, 100,000-hand working set | C++ | Rust |
+| --- | ---: | ---: |
+| Hold’em, seven checked card IDs | 134.9 | 138.2 |
+| Hold’em, prepared hole/board | 241.4 | 283.2 |
+| Omaha, nine checked card IDs | 20.2 | 20.8 |
+| Omaha, prepared hole/board | 63.5 | 59.1 |
+| Omaha8, nine checked card IDs | 16.7 | 19.8 |
+
+| Complete equity workload | C++ 1 thread | Rust 1 thread | C++ 4 threads | Rust 4 threads |
+| --- | ---: | ---: | ---: | ---: |
+| Fixed Hold’em, exact | 38.8 | 36.0 | — | — |
+| Hold’em ranges, MC | 9.8 | 18.6 | 29.6 | 70.2 |
+| Fixed Omaha, MC | 9.6 | 17.0 | 27.7 | 65.6 |
+| Omaha ranges, MC | 3.5 | 5.9 | 14.6 | 24.7 |
+| Omaha8 ranges, MC | 3.2 | 5.4 | 12.7 | 22.2 |
+
+Rust is faster on these Monte Carlo workloads, but slower on prepared Omaha
+with a large working set and exact Hold’em. This does not isolate language
+speed: RNGs, representations, compilers, and scheduling differ. Both implementations
+remain in the repository. Exact results match; independently seeded MC results
+are checked within six combined standard errors.
+
+The 100-hand working set gives Rust 151.9M checked Hold’em and 192.9M prepared
+Omaha evaluations/s. C++ OMPEval scoring of fully precombined seven-card
+aggregates reaches 802.5M/s with 100,000 hands and 1,229.4M/s with 100. That path
+omits card validation, aggregation, and board/hole merging. It explains why
+upstream OMP figures cannot be directly compared with checked API rates or full
+equity simulations. These M1 rates do not establish an M1 versus i7-3770K result.
+
+Reproduce the matched comparison:
+
+```sh
+python tools/build_python.py
+python tools/build_cpp_reference.py --lto
+c++ -std=c++17 -O3 -flto=thin -pthread -Icpp benchmarks/matched.cpp cpp/engine.cpp cpp/fast_eval.cpp cpp/vendor/ompeval/HandEvaluator.cpp -o /tmp/poker-matched-cpp
+cargo build --locked --release --bin benchmark
+PYTHONPATH=. python benchmarks/compare.py --cpp /tmp/poker-matched-cpp
+```
+
+On non-Apple compilers, replace `-flto=thin` with the supported LTO flag.

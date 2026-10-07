@@ -2,8 +2,10 @@
 
 A PokerStove-style equity library and command-line calculator for **Hold'em,
 four-card Omaha high, and Omaha eight-or-better**. Python handles all text,
-range expansion, and presentation. A C++17 core handles numeric hands, weighted
-sampling, exact enumeration, and evaluation. No runtime Python dependencies.
+range expansion, and presentation. A Rust core handles numeric hands, weighted
+sampling, exact enumeration, and evaluation. The same core compiles to WebAssembly
+for a phone-friendly browser calculator, with JavaScript handling browser text
+parsing. Python has no mandatory runtime dependencies.
 
 The Hold'em evaluator uses compact OMPEval tables and cached partial hands.
 Omaha high uses a direct board/hole rank lookup inspired by PH Evaluator, with
@@ -13,16 +15,16 @@ and exactly three board cards**. Attribution is in [THIRD_PARTY.md](THIRD_PARTY.
 
 ## Build and run
 
-Requires Python 3.10+ with headers, setuptools 77+, and a C++17 compiler.
-The current conda environment has everything needed, including pytest.
+Requires Python 3.10+ and Rust/Cargo 1.88+. Installation uses maturin. The original
+C++ implementation remains buildable for comparison; production builds use Rust.
 
 ```sh
 # Work directly from this checkout, without installing into the environment:
-python setup.py build_ext --inplace
+python tools/build_python.py
 python -m poker_engine 'AsAh' 'KsKh'
 
 # Or install the package and console command:
-python -m pip install . --no-build-isolation
+python -m pip install .
 poker-engine 'TT+,AQs+,AKo' 'random' --samples 1000000 --seed 42 --threads 4
 ```
 
@@ -40,6 +42,26 @@ AsAh has approximately 82.637% equity against KsKh. The Omaha8 example gives
 75% / 25% because one player wins high and both tie low.
 
 ## Python API
+
+For notebooks, use named players and reusable analysis contexts. Results display
+an HTML table automatically, or convert to pandas with the optional
+`pip install '.[notebook]'` extra. See [examples/notebook.ipynb](examples/notebook.ipynb).
+
+```python
+from poker_engine import Calculator
+
+calc = Calculator({'Hero': 'AA$ds', 'Villain': 'random'}, game='omaha')
+result = calc.simulate(samples=1_000_000, seed=42, threads=4)
+result                         # notebook HTML table
+result.to_frame()               # optional pandas DataFrame
+calc.with_board('2c3d4h').simulate(seed=42)
+
+split = Calculator({'Hero': 'As2cJhJd', 'Villain': 'Ah2dKsKh'},
+                   game='omaha8', board='3d4h8sJcQd')
+split.exact()                  # 75% / 25%; quartered low
+```
+
+The original functional API is preserved:
 
 ```python
 from poker_engine import Range, equity, evaluate_hand, parse_range
@@ -88,16 +110,40 @@ See [docs/ranges.md](docs/ranges.md) for precise grammar, weighting, and caveats
 | `xxyy`, `$ds` | Omaha double suited (2+2) |
 | `xxyz`, `$ss` | Omaha exactly single suited (2+1+1) |
 | `xyzw`, `$r` | Omaha rainbow |
+| `$ts`, `$ms` | Exactly three / four cards of one suit |
+| `$hs`, `$as`, `$bs` | Highest card / ace suited; top two separately suited |
+| `{AKs|A2o}` | Two disjoint Hold’em selections forming an Omaha hand |
 | `AxAyxy`, `AA$ds` | Double-suited aces |
 | `AA,KK` / `AA:$ds` / `AA!As` | Union / intersection / exclusion |
 | `(AA,KK):$ds` | Group expressions |
 | `AA@0.5,KK@1` | Relative combo weights; `@50%` is also accepted |
 
 Rank symbols in ranges are uppercase and suits are lowercase. Exact card parsing
-also accepts mixed case. Top-N% ranges, PPT rank variables/macros beyond the three
-suit macros, classic parenthesized suit groups, and Omaha rundown `+/-` shorthand
-are intentionally unsupported. Supply explicit rank patterns instead. No GUI,
-betting, side-pot modeling, five/six-card Omaha, or PQL query language is included.
+also accepts mixed case. Top-N% ranges, PPT rank variables and unlisted macros, classic parenthesized suit groups, and Omaha rundown `+/-` shorthand
+are intentionally unsupported. Supply explicit rank patterns instead. Betting,
+side-pot modeling, five/six-card Omaha, and PQL query language are not included.
+
+## Browser and mobile app
+
+```sh
+rustup target add wasm32-unknown-unknown
+# Match the wasm-bindgen CLI version to Cargo.lock (currently 0.2.129).
+cargo install wasm-bindgen-cli --version 0.2.129 --locked
+python tools/build_wasm.py
+python -m http.server 8000 --directory web
+# Open http://localhost:8000
+```
+
+The app supports 2–10 player ranges, Hold'em, Omaha high, and Omaha8, board/dead
+cards, automatic/exact/Monte Carlo calculation, and cancellation. Touch-sized
+controls and result cards fit small phones. Calculations and range expansion run
+inside a dedicated Web Worker. Stopping a calculation terminates the worker.
+
+**No Python server or computation backend is needed.** Any static HTTPS host can
+serve `web/`, including the generated `web/pkg/` assets. Python remains useful for
+notebooks and CLI analysis. A backend would only be needed for future account,
+saved-analysis, or sharing features. See [docs/architecture.md](docs/architecture.md)
+for payload, memory, browser limits, and the JavaScript API.
 
 ## Exact and Monte Carlo behavior
 
@@ -130,31 +176,47 @@ random error; it does not correct an inaccurately specified range.
 
 The returned seed can reproduce a run with the same parameters, thread count,
 binary/toolchain, and platform. Changing thread count changes the random stream;
-cross-platform identical samples are not promised. Without a seed a new one is
-generated and returned. `elapsed` includes parsing, preparation, and simulation.
+native and WASM one-thread streams are checked for equality. The Rust RNG differs
+from the preserved C++ version, so an old C++ seed does not recreate the same
+samples. Without a seed a new one is generated and returned. `elapsed` includes
+parsing, preparation, and simulation.
 
 ## Verification and benchmarks
 
 ```sh
 python -m pytest -q
-# Optional: CMake is not installed in the current conda environment.
-cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
-cmake --build build/cmake -j 4
-ctest --test-dir build/cmake --output-on-failure
-./build/cmake/poker_evaluator_benchmark
-PYTHONPATH=. python benchmarks/benchmark.py --samples 1000000 --output benchmarks/results.json
+cargo test --release --no-default-features
+node --test web/tests/engine.test.js
+node web/tests/browser.mjs  # real Chrome, including narrow phone layouts
+python tools/build_cpp_reference.py --lto
+c++ -std=c++17 -O3 -flto=thin -pthread -Icpp benchmarks/matched.cpp cpp/engine.cpp cpp/fast_eval.cpp cpp/vendor/ompeval/HandEvaluator.cpp -o /tmp/poker-matched-cpp
+cargo build --release --bin benchmark
+PYTHONPATH=. python benchmarks/compare.py --cpp /tmp/poker-matched-cpp
+```
+
+Optional WebKit (Safari engine) mobile/touch verification:
+
+```sh
+npm install --prefix .tools/browser playwright@1.63.0 --no-audit --no-fund
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.tools/browsers" .tools/browser/node_modules/.bin/playwright install webkit
+node web/tests/webkit.mjs
 ```
 
 The Python tests include independent evaluators, weighted joint conditioning,
 card removal, exact reference equities, quartered lows, multiway ties, range
-counts, seeded multithread simulation, and CLI/native validation. C++ checks all
+counts, seeded multithread simulation, notebook display, and CLI/native validation.
+Rust checks all
 2,598,960 five-card hands against the reference, known category frequencies and
-7,462 strengths, then stresses 100,000 random seven-card and Omaha high/low hands.
+7,462 strengths. Shared WASM fixtures use an independent Python hand oracle and
+check native/WASM numeric results and seeded streams. Preserved C++ checks also
+stress 100,000 random seven-card and Omaha high/low hands.
 
 Measured performance and its comparison methodology are in
 [docs/performance.md](docs/performance.md). Regenerate the compressed, portable
 Omaha table with `python tools/regenerate_tables.py`; no network access is needed.
-On first Omaha use it loads about 21.4 MiB of immutable data. C++ callers can
+On first Omaha use it loads about 21.4 MiB of immutable data. Rust embeds compressed
+tables in its binary, including the 1 MiB Hold'em/translation/low tables. Regenerate
+the latter using `python tools/regenerate_core.py`. C++ callers can
 generate that table in memory automatically, or supply the numeric table via
 `initialize_omaha_table`. Python packages include the pre-generated compressed
 asset so normal installation does not regenerate it.

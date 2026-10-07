@@ -149,4 +149,8 @@ PyMethodDef methods[] = {
 PyModuleDef module = {PyModuleDef_HEAD_INIT, "_native", "Numeric poker engine; no text parsing.", -1,
                       methods, nullptr, nullptr, nullptr, nullptr};
 }
+#ifdef POKER_CPP_REFERENCE
+PyMODINIT_FUNC PyInit__cpp_reference() { return PyModule_Create(&module); }
+#else
 PyMODINIT_FUNC PyInit__native() { return PyModule_Create(&module); }
+#endif

@@ -1,13 +1,12 @@
 """Public Python API. Only numeric data crosses into the compiled core."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import math
 import secrets
 import time
-import gzip
-from importlib.resources import files
-from collections.abc import Iterable
+import html
+from collections.abc import Iterable, Mapping
 
 from .cards import cards_mask, parse_cards
 from .ranges import GAME_IDS, Range, hole_size, normalize_game, parse_range
@@ -15,21 +14,11 @@ from .ranges import GAME_IDS, Range, hole_size, normalize_game, parse_range
 try:
     from . import _native
 except ImportError as exc:
-    raise ImportError("Build the C++ extension first: python setup.py build_ext --inplace "
+    raise ImportError("Build the Rust extension first: maturin develop --release "
                       "(or install with python -m pip install .)") from exc
 
 CATEGORIES = ("high card", "pair", "two pair", "three of a kind", "straight",
               "flush", "full house", "four of a kind", "straight flush")
-
-_omaha_initialized = False
-
-
-def _ensure_omaha() -> None:
-    global _omaha_initialized
-    if not _omaha_initialized:
-        blob = files("poker_engine").joinpath("data/omaha.bin.gz").read_bytes()
-        _native.initialize_omaha(gzip.decompress(blob))
-        _omaha_initialized = True
 
 
 @dataclass(frozen=True)
@@ -77,9 +66,28 @@ class EquityResult:
     threads: int
     elapsed: float
     range_sizes: tuple[int, ...]
+    labels: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    def rows(self) -> list[dict]:
+        """One ordinary dictionary per player, convenient without pandas."""
+        return [dict(player=self.labels[i] if self.labels else f"Player {i + 1}",
+                     combos=self.range_sizes[i], **asdict(p)) for i, p in enumerate(self.players)]
+
+    def to_frame(self):
+        """A pandas DataFrame, when pandas is installed (optional notebook extra)."""
+        import pandas as pd
+        return pd.DataFrame(self.rows()).set_index("player")
+
+    def _repr_html_(self) -> str:
+        rows = "".join(f"<tr><td>{html.escape(row['player'])}</td><td>{row['equity']:.3%}</td>"
+                       f"<td>{row['stderr']:.3%}</td><td>{row['win']:.3%}</td>"
+                       f"<td>{row['tie']:.3%}</td><td>{row['combos']:,}</td></tr>" for row in self.rows())
+        return (f"<p>{self.game} · {self.method} · {self.outcomes:,} outcomes · {self.elapsed:.3f}s</p>"
+                "<table><thead><tr><th>Player</th><th>Equity</th><th>StdErr</th><th>Win/Scoop</th>"
+                f"<th>Tie/Share</th><th>Combos</th></tr></thead><tbody>{rows}</tbody></table>")
 
 
 def evaluate_cards(cards: str | Iterable[int | str]) -> HandValue:
@@ -90,8 +98,6 @@ def evaluate_cards(cards: str | Iterable[int | str]) -> HandValue:
 def evaluate_hand(hole: str | Iterable[int | str], board: str | Iterable[int | str],
                   *, game: str = "holdem") -> HandValue:
     game = normalize_game(game)
-    if game != "holdem":
-        _ensure_omaha()
     high, low = _native.evaluate(GAME_IDS[game], parse_cards(hole), parse_cards(board))
     return HandValue(high, low)
 
@@ -150,8 +156,6 @@ def equity(ranges: Iterable[str | Range], *, game: str = "holdem",
         bound = math.comb(available, missing) * math.prod(len(r) for r in expanded)
         method = "exact" if bound <= max_exact else "monte_carlo"
     native_seed = seed if seed is not None else secrets.randbits(64)
-    if game != "holdem":
-        _ensure_omaha()
     compiled = []
     for r in expanded:
         if game not in r._native_cache:
@@ -163,3 +167,54 @@ def equity(ranges: Iterable[str | Range], *, game: str = "holdem",
                         raw["outcomes"], raw["attempts"], native_seed if method != "exact" else None,
                         threads if method != "exact" else 1, time.perf_counter() - started,
                         tuple(len(r) for r in expanded))
+
+
+class Calculator:
+    """Reusable notebook analysis with named players and cached ranges.
+
+    Calculator({'Hero': 'AA$ds', 'Villain': 'random'}, game='omaha').simulate(seed=42)
+    """
+    def __init__(self, ranges: Mapping[str, str | Range] | Iterable[str | Range], *,
+                 game: str = "holdem", board: str | Iterable[int | str] = "",
+                 dead: str | Iterable[int | str] = ""):
+        self.game = normalize_game(game)
+        if isinstance(ranges, Mapping):
+            self.labels = tuple(ranges)
+            if not all(isinstance(label, str) for label in self.labels):
+                raise ValueError("Player names must be strings")
+            values = tuple(ranges.values())
+        else:
+            if isinstance(ranges, (str, Range)):
+                raise ValueError("Pass named players or a sequence of ranges")
+            values = tuple(ranges)
+            self.labels = tuple(f"Player {i + 1}" for i in range(len(values)))
+        if not 2 <= len(values) <= 10:
+            raise ValueError("Use 2 to 10 players")
+        self.board, self.dead = parse_cards(board), parse_cards(dead)
+        if len(self.board) not in (0, 3, 4, 5):
+            raise ValueError("Board must contain 0, 3, 4, or 5 cards")
+        cards_mask(self.board + self.dead)
+        self.ranges = tuple(parse_range(r, game=self.game) if isinstance(r, str) else r for r in values)
+        if any(not isinstance(r, Range) or r.hand_size != hole_size(self.game) for r in self.ranges):
+            raise ValueError("Ranges must match the selected game")
+
+    def equity(self, **options) -> EquityResult:
+        result = equity(self.ranges, game=self.game, board=self.board, dead=self.dead, **options)
+        return replace(result, labels=self.labels)
+
+    def exact(self, *, max_exact: int = 2000000) -> EquityResult:
+        return self.equity(method="exact", max_exact=max_exact)
+
+    def simulate(self, *, samples: int = 100000, seed: int | None = None,
+                 threads: int = 1, max_attempts: int = 0) -> EquityResult:
+        return self.equity(method="monte_carlo", samples=samples, seed=seed,
+                           threads=threads, max_attempts=max_attempts)
+
+    def with_board(self, board: str | Iterable[int | str], *, dead=None) -> Calculator:
+        return Calculator(dict(zip(self.labels, self.ranges)), game=self.game, board=board,
+                          dead=self.dead if dead is None else dead)
+
+    def __repr__(self) -> str:
+        from .cards import format_cards
+        players = ", ".join(f"{name}: {len(r):,} combos" for name, r in zip(self.labels, self.ranges))
+        return f"Calculator({self.game}, {players}, board={format_cards(self.board)!r})"
