@@ -71,6 +71,12 @@ for(const [name,type,launch] of [['chrome',chromium,{channel:'chrome'}],['webkit
     await page.getByLabel('Remove Player 3').tap();assert.equal(await page.locator('.player-select').count(),2);
     await page.locator('[data-game="omaha"]').tap();await page.locator('[data-edit="0"]').tap();await page.locator('[data-texture="connected"]').tap();await page.locator('#show-filters').tap();await page.locator('[data-suitedness="double"]').tap();
     await page.waitForFunction(()=>document.getElementById('range-count').textContent==='360 combinations');
+    await page.locator('#show-constraints').tap();
+    await page.getByLabel('Lowest high card',{exact:true}).selectOption('J');await page.getByLabel('Highest high card',{exact:true}).selectOption('Q');
+    await page.waitForFunction(()=>document.getElementById('range-count').textContent==='72 combinations');
+    await page.getByLabel('Rank distance 1 maximum',{exact:true}).selectOption('2');await page.getByLabel('Rank distance 1 minimum',{exact:true}).selectOption('2');
+    await page.waitForFunction(()=>document.getElementById('range-expression').textContent.includes('QT98,J987'));
+    await page.waitForFunction(()=>document.getElementById('range-count').textContent==='72 combinations');
     assert.ok((await page.locator('#advanced-link').getAttribute('href')).includes('game=omaha'));
     assert.ok((await page.locator('#advanced-link').getAttribute('href')).includes('#'));
     await page.locator('#show-hands').tap();await page.locator('[data-build="pairs"]').tap();await page.locator('[data-pair-preset="highonly"]').tap();await page.locator('#show-filters').tap();await page.locator('[data-suitedness="any"]').tap();await page.locator('#show-hands').tap();
