@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poker-engine"
+version = "0.1.0"
+description = "Python ranges and a C++ equity engine for Hold'em and Omaha"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT AND ISC"
+license-files = ["LICENSE", "THIRD_PARTY.md", "cpp/vendor/ompeval/LICENSE.txt", "cpp/vendor/ompeval/NOTICE.md"]
+
+[project.scripts]
+poker-engine = "poker_engine.cli:main"
+
+[tool.setuptools]
+packages = ["poker_engine", "poker_engine.data"]
+
+[tool.setuptools.package-data]
+poker_engine = ["data/*.bin.gz"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

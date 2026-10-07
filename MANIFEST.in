@@ -1,0 +1,8 @@
+include cpp/*.hpp cpp/*.cpp
+recursive-include cpp/vendor *.h *.cpp *.hxx *.txt *.md
+recursive-include poker_engine/data *.gz
+recursive-include tools *.cpp *.py
+include README.md LICENSE THIRD_PARTY.md CMakeLists.txt PLAN.md
+recursive-include benchmarks *.py *.cpp
+recursive-include docs *.md
+recursive-include tests *.py *.cpp
