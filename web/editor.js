@@ -1,6 +1,6 @@
 // Range / exact-hand editor. Works on a draft copy: Cancel discards, Done commits.
 import {
-  RANKS, SUITS, SUIT_NAMES, HAND_CLASSES, CLASS_BY_TEXT, suitPatterns, classState, addClasses, removeClasses,
+  RANKS, SUITS, SUIT_NAMES, HAND_CLASSES, CLASS_BY_TEXT, classCombos, suitPatterns, classState, addClasses, removeClasses,
   withPattern, holdemPreset, topPercent, holdemShorthand, rangePercent, groupPreset,
   OMAHA_FAMILIES, TEXTURES, CONNECTIONS, rundownHands, omahaSummary,
 } from './model.js';
@@ -37,8 +37,6 @@ function armRemove(armed) {
   const button = $('remove-player');
   button.dataset.armed = armed ? 'true' : '';
   button.setAttribute('aria-label', armed ? `Tap again to remove ${ctx.player.name}` : `Remove ${ctx.player.name}`);
-  button.style.background = armed ? 'var(--danger)' : '';
-  button.style.color = armed ? '#fff' : '';
 }
 $('remove-player').onclick = () => {
   if ($('remove-player').dataset.armed !== 'true') { armRemove(true); return; }
@@ -50,7 +48,7 @@ const mode = () => ctx.player.mode[family(ctx.game)];
 function build() {
   const body = $('editor-body');
   setMode(mode());
-  $('editor-subtitle').textContent = `${GAME_NAMES[ctx.game]} ${mode() === 'cards' ? 'hand' : 'range'}`;
+  $('editor').setAttribute('aria-description', `${GAME_NAMES[ctx.game]} ${mode() === 'cards' ? 'exact hand' : 'range'}`);
   body.classList.toggle('fixed', mode() !== 'range' || ctx.game === 'holdem');
   if (mode() === 'cards') buildCards(body);
   else if (ctx.game === 'holdem') buildHoldem(body);
@@ -78,9 +76,15 @@ function setSummary(summary, { label, combos, percent, error }) {
 function buildHoldem(body) {
   const p = ctx.player, summary = summaryCard();
   summary.examples.remove();
-  const slider = h('input', { type: 'range', min: '0', max: '100', step: '0.5', id: 'top-percent', 'aria-label': 'Top percent of hands' });
+  const slider = h('input', { type: 'range', min: '0', max: '100', step: '0.5', value: '0', id: 'top-percent', 'aria-label': 'Select the strongest percent of hands' });
   const output = h('output', { for: 'top-percent' });
-  slider.oninput = () => { p.holdem = topPercent(Number(slider.value), HOLDEM_ORDER); refresh({ fromSlider: true }); };
+  // The slider selects (stages) the strongest hands; Add or Remove applies them like a drag.
+  slider.oninput = () => {
+    const combos = topPercent(Number(slider.value), HOLDEM_ORDER);
+    matrix.staged.clear();
+    for (const text of HOLDEM_ORDER) if (combos.has(classCombos(text)[0])) matrix.staged.add(text);
+    matrix.refresh(); renderStage();
+  };
   const presets = h('div.chips.scroll', { role: 'group', 'aria-label': 'Quick ranges' },
     ...[['pairs', 'Pairs'], ['suited', 'Suited'], ['broadway', 'Broadway'], ['all', 'Any two'], ['clear', 'Clear']].map(([key, label]) =>
       h('button.chip', { dataset: { preset: key }, onclick: () => { p.holdem = holdemPreset(key); refresh(); } }, label)));
@@ -91,25 +95,31 @@ function buildHoldem(body) {
     onStage: () => renderStage(),
   });
   const stage = h('div.stage-bar');
+  let suitsOpen = null; // null = automatic: open for small selections
 
   function renderStage() {
     const staged = HAND_CLASSES.filter(c => matrix.staged.has(c.text));
+    if (!staged.length) suitsOpen = null;
+    const showSuits = suitsOpen ?? staged.length <= 3;
+    const stagedCombos = staged.reduce((n, c) => n + c.combos, 0);
+    if (!staged.length) slider.value = '0';
+    output.textContent = `${(stagedCombos / 13.26).toFixed(1)}%`;
     if (!staged.length) {
       stage.className = 'stage-bar empty';
       stage.replaceChildren('Tap or drag across hands, then Add or Remove.');
       return;
     }
     stage.className = 'stage-bar';
-    const combos = staged.reduce((n, c) => n + c.combos, 0);
     const names = staged.map(c => c.text);
     stage.replaceChildren(
-      h('div.stage-info', {}, h('strong', { text: `${staged.length} selected · ${combos} combos` }),
-        h('small', { text: names.slice(0, 8).join(', ') + (names.length > 8 ? '…' : '') })),
+      h('div.stage-info', {}, h('strong', { text: `${staged.length} hand${staged.length === 1 ? '' : 's'}` }),
+        h('small', { text: `${stagedCombos} combos · ${names.slice(0, 6).join(', ')}${names.length > 6 ? '…' : ''}` })),
       h('div.stage-actions', {},
         h('button.dismiss', { 'aria-label': 'Clear selection', onclick: () => matrix.clearStage() }, '✕'),
+        h('button.suits-toggle', { id: 'toggle-suits', 'aria-expanded': String(showSuits), onclick: () => { suitsOpen = !showSuits; renderStage(); } }, 'Suits'),
         h('button.remove', { id: 'remove-selection', onclick: () => commit(false) }, 'Remove'),
         h('button.add', { id: 'add-selection', onclick: () => commit(true) }, 'Add')),
-      suitChips(staged));
+      ...(showSuits ? [suitChips(staged)] : []));
   }
 
   /** Per-suit toggles for the selected classes, e.g. only ♥♥ of AKs. */
@@ -127,7 +137,7 @@ function buildHoldem(body) {
           onclick: () => { p.holdem = withPattern(p.holdem, classes, pattern, state !== 'true'); refresh(); },
         }, suitGlyphs(pattern));
       });
-      rows.push(h('div', {}, h('small', { text: `${label}: tap suits to include them (first card = higher rank)` }), ...chips));
+      rows.push(h('div', {}, h('small', { text: `${label} · first suit is the higher card` }), ...chips));
     }
     return h('div.stage-suits', {}, rows);
   }
@@ -138,11 +148,9 @@ function buildHoldem(body) {
     matrix.staged.clear(); refresh();
   }
 
-  function refresh({ fromSlider = false } = {}) {
+  function refresh() {
     matrix.refresh(); renderStage();
     const percent = rangePercent(p.holdem);
-    if (!fromSlider) slider.value = String(Math.round(percent * 2) / 2);
-    output.textContent = `${Number(slider.value).toFixed(1)}%`;
     setSummary(summary, { label: p.holdem.size === 1326 ? 'Any two cards' : holdemShorthand(p.holdem), combos: p.holdem.size, percent });
   }
 

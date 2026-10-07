@@ -52,17 +52,19 @@
 <dialog class="sheet full" id="editor" aria-labelledby="editor-title">
   <div class="sheet-nav">
     <button type="button" class="nav-button" id="editor-cancel">Cancel</button>
-    <div class="nav-title"><h2 id="editor-title" tabindex="-1" autofocus>Hero</h2><span id="editor-subtitle"></span></div>
-    <button type="button" class="nav-button strong" id="editor-done">Done</button>
-  </div>
-  <div class="editor-bar">
-    <div class="segmented" role="radiogroup" aria-label="Range or exact hand" id="editor-mode">
-      <button type="button" role="radio" data-mode="range">Range</button>
-      <button type="button" role="radio" data-mode="cards">Exact hand</button>
+    <div class="nav-title">
+      <h2 id="editor-title" tabindex="-1" autofocus>Hero</h2>
+      <div class="mini-toggle" role="radiogroup" aria-label="Range or exact hand" id="editor-mode">
+        <button type="button" role="radio" data-mode="range">Range</button>
+        <button type="button" role="radio" data-mode="cards">Hand</button>
+      </div>
     </div>
-    <button type="button" class="icon-button danger" id="remove-player" aria-label="Remove player">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1zM6 9h12l-.8 11.1A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.9L6 9z"/></svg>
-    </button>
+    <div class="nav-end">
+      <button type="button" class="nav-icon danger" id="remove-player" aria-label="Remove player">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1zM6 9h12l-.8 11.1A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.9L6 9z"/></svg>
+      </button>
+      <button type="button" class="nav-button strong" id="editor-done">Done</button>
+    </div>
   </div>
   <div class="editor-body" id="editor-body"></div>
 </dialog>

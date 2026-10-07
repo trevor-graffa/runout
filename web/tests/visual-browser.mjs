@@ -95,7 +95,7 @@ async function suite(name,type,launch){
         const vw=innerWidth,vh=innerHeight,root=document.documentElement;
         const inside=sel=>{const r=document.querySelector(sel).getBoundingClientRect();return r.left>=-.5&&r.top>=-.5&&r.right<=vw+.5&&r.bottom<=vh+.5&&r.width>0;};
         const small=[...document.querySelectorAll('.app button,.app a,.app select,.app input')].filter(e=>{
-          if(e.closest('.matrix,.deck,.slot,.chip,.suit-chip,.player-delete,.card'))return false;
+          if(e.closest('.matrix,.deck,.slot,.chip,.suit-chip,.player-delete,.card,.mini-toggle'))return false;
           const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.height<43.5;
         }).map(e=>`${e.id||e.className||e.tagName}:${e.getBoundingClientRect().height}`);
         return {sw:root.scrollWidth,sh:root.scrollHeight,bw:document.body.scrollWidth,vw,vh,
@@ -111,17 +111,19 @@ async function suite(name,type,launch){
       const e=await page.evaluate(()=>{
         const vw=innerWidth,body=document.getElementById('editor-body'),d=document.getElementById('editor').getBoundingClientRect();
         const matrix=document.querySelector('#editor .matrix'),mr=matrix.getBoundingClientRect(),cell=matrix.firstChild.getBoundingClientRect();
-        const nav=[...document.querySelectorAll('#editor .sheet-nav button')].map(b=>b.getBoundingClientRect().height);
+        const nav=[...document.querySelectorAll('#editor .sheet-nav button')].filter(b=>!b.closest('.mini-toggle')).map(b=>b.getBoundingClientRect().height).filter(h=>h>0);
+        const toggle=[...document.querySelectorAll('#editor .mini-toggle button')].map(b=>b.getBoundingClientRect().height);
         const small=[...document.querySelectorAll('#editor button,#editor input,#editor select')].filter(x=>{
-          if(x.closest('.matrix,.deck,.slot,.chip,.suit-chip,.card,.segmented,.stage-actions,.pick'))return false;
+          if(x.closest('.matrix,.deck,.slot,.chip,.suit-chip,.card,.segmented,.stage-actions,.pick,.mini-toggle'))return false;
           const r=x.getBoundingClientRect();return r.width>0&&r.height>0&&r.height<31.5;}).map(x=>x.id||x.className);
         return {doc:document.documentElement.scrollWidth<=vw,body:body.scrollWidth<=body.clientWidth+1,dialogRight:d.right<=vw+.5,dialogBottom:d.bottom<=innerHeight+.5,
-          matrixIn:mr.left>=-.5&&mr.right<=vw+.5,cell:cell.width,nav,small,
-          seg:[...document.querySelectorAll('#editor .segmented button,#editor .stage-actions button')].filter(b=>b.getBoundingClientRect().height>0&&b.getBoundingClientRect().height<39.5).length};
+          matrixIn:mr.left>=-.5&&mr.right<=vw+.5,cell:cell.width,nav,toggle,small,
+          seg:[...document.querySelectorAll('#editor .segmented button,#editor .stage-actions button')].filter(b=>b.getBoundingClientRect().height>0&&b.getBoundingClientRect().height<31.5).length};
       });
       assert.ok(e.doc&&e.body&&e.dialogRight&&e.dialogBottom&&e.matrixIn,`${tag} editor overflow ${JSON.stringify(e)}`);
       assert.ok(e.cell>=18,`${tag} matrix cell too small ${e.cell}`);
       assert.ok(e.nav.every(h=>h>=43.5),`${tag} editor nav buttons ${e.nav}`);
+      assert.ok(e.toggle.length===2&&e.toggle.every(h=>h>=27.5),`${tag} range/hand toggle ${e.toggle}`);
       assert.equal(e.seg,0,`${tag} editor segmented/stage buttons under 40px`);
       assert.deepEqual(e.small,[],`${tag} editor small targets`);
       await cancelEditor();
@@ -217,7 +219,7 @@ async function suite(name,type,launch){
     assert.deepEqual(staged.sort(),['A2s','A3s','A4s','A5s']);
     assert.ok((await text('#editor-body .summary-text')).includes('No hands selected'),'range unchanged until Add');
     assert.equal(await page.locator('#editor .matrix .full').count(),0);
-    assert.ok((await text('.stage-info')).includes('4 selected'));
+    assert.ok((await text('.stage-info')).includes('4 hands'));
     await page.locator('#add-selection').tap();
     assert.equal(await combos(),16);
     assert.equal(await page.locator('#editor .matrix .staged').count(),0);
@@ -267,12 +269,22 @@ async function suite(name,type,launch){
   await step('top percent slider',async()=>{
     await open();
     await openEditor(1);
-    await page.locator('#top-percent').fill('50');
-    const pct=parseFloat(await text('#editor-body .summary-stat strong'));
-    assert.ok(Math.abs(pct-50)<4,`top 50% gave ${pct}`);
-    assert.ok((await text('#editor-body .slider-row output')).startsWith('50'));
+    await page.locator('[data-preset="clear"]').tap();
     await page.locator('#top-percent').fill('10');
-    assert.ok(parseFloat(await text('#editor-body .summary-stat strong'))<14);
+    // The slider stages the strongest hands; the range is unchanged until Add.
+    assert.ok(await page.locator('#editor [data-hand="AA"].staged').count()===1);
+    assert.equal(await page.locator('#editor [data-hand="72o"].staged').count(),0);
+    assert.equal(await combos(),0);
+    const staged=parseFloat(await text('#editor-body .slider-row output'));
+    assert.ok(Math.abs(staged-10)<2,`top 10% staged ${staged}`);
+    await page.locator('#add-selection').tap();
+    assert.ok(Math.abs(parseFloat(await text('#editor-body .summary-stat strong'))-staged)<0.05);
+    assert.equal(await page.locator('#editor .matrix .staged').count(),0);
+    assert.equal(await page.locator('#top-percent').inputValue(),'0','slider resets after Add');
+    await page.locator('#top-percent').fill('5');
+    await page.locator('#remove-selection').tap();
+    const left=parseFloat(await text('#editor-body .summary-stat strong'));
+    assert.ok(left>3&&left<8,`top 10% minus top 5% left ${left}`);
     await cancelEditor();
   });
   await step('exact hand mode',async()=>{
